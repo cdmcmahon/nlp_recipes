@@ -58,13 +58,39 @@ def getCookware():
     i = i+1
   return cookware
 
+# Open the page from AllRecipes.com given a URL
+def RequestURL():
+  print("\n")
+  pageurl = raw_input("Please input the URL of a recipe from AllRecipes.com: ")
+  print("\n")
+  return RetrievePage(pageurl)
+
+def RetrievePage(pageurl):
+  recipes_page = urllib2.urlopen(pageurl)
+  recipes_html = recipes_page.read()
+  return ExtractIngredients(recipes_html)
 
 
+# Extract the ingredients and quantities from the HTML and store them as tuples in an array
+def ExtractIngredients(pagehtml):
+  recipe_soup = Soup(pagehtml)
+  recipe_amounts = []
+  recipe_ingred = []
+  for listing in recipe_soup.findAll('span', id="lblIngAmount"):
+    recipe_amounts.append(listing.getText())
+  for listing in recipe_soup.findAll('span', id="lblIngName"):
+    recipe_ingred.append(listing.getText())
+  recipe_items = zip(recipe_amounts, recipe_ingred)
+  return recipe_items
 
 
 utensils = getUtensils()
 cookware = getCookware()
+recipe = RequestURL()
 
-
+print("Utensils:")
 print utensils
+print('\nCookware:')
 print cookware
+print('\nIngredients')
+print recipe
