@@ -59,6 +59,17 @@ def getCookware():
   return cookware
 
 # Open the page from AllRecipes.com given a URL
+def RetrieveInfo():
+  recipe_code = RequestURL()
+  recipe_soup = Soup(recipe_code)
+  recipe_title = ExtractTitle(recipe_soup)
+  recipe_ingred = ExtractIngredients(recipe_soup)
+  recipe_time = ExtractTime(recipe_soup)
+  recipe_dir = ExtractDirections(recipe_soup)
+
+  recipe_info = [recipe_title, recipe_time, recipe_ingred, recipe_dir]
+  return recipe_info
+
 def RequestURL():
   print("\n")
   pageurl = raw_input("Please input the URL of a recipe from AllRecipes.com: ")
@@ -68,29 +79,71 @@ def RequestURL():
 def RetrievePage(pageurl):
   recipes_page = urllib2.urlopen(pageurl)
   recipes_html = recipes_page.read()
-  return ExtractIngredients(recipes_html)
+  return recipes_html
 
+def ExtractTitle(recipe_soup):
+  listing = recipe_soup.find('span', id="lblTitle")
+  title = listing.getText()
+  return title
 
-# Extract the ingredients and quantities from the HTML and store them as tuples in an array
-def ExtractIngredients(pagehtml):
-  recipe_soup = Soup(pagehtml)
-  recipe_amounts = []
-  recipe_ingred = []
-  for listing in recipe_soup.findAll('span', id="lblIngAmount"):
-    recipe_amounts.append(listing.getText())
-  for listing in recipe_soup.findAll('span', id="lblIngName"):
-    recipe_ingred.append(listing.getText())
-  recipe_items = zip(recipe_amounts, recipe_ingred)
+def ExtractIngredients(recipe_soup):
+  recipe_items = []
+  for listing in recipe_soup.findAll('p', itemprop="ingredients"):
+    amount = listing.find('span', id="lblIngAmount")
+    if amount:
+      amounttext = amount.getText()
+    else:
+      amounttext = ''
+    ingred = listing.find('span', id="lblIngName")
+    if ingred:
+      ingredtext = ingred.getText()
+    else:
+      amounttext = ''
+    recipe_items.append([amounttext, ingredtext])
   return recipe_items
 
+def ExtractTime(recipe_soup):
+  listing = recipe_soup.find('span', id="prepMinsSpan")
+  preptime = listing.getText()
+  listing = recipe_soup.find('span', id="cookMinsSpan")
+  cooktime = listing.getText()
+  listing = recipe_soup.find('span', id="totalMinsSpan")
+  totaltime = listing.getText()
+  return [preptime, cooktime, totaltime]
+
+def ExtractDirections(recipe_soup):
+  desc = recipe_soup.find('ol')
+  directions = desc.getText()
+
+  sent_detector = nltk.data.load('tokenizers/punkt/english.pickle')
+  directions = sent_detector.tokenize(directions)
+  return directions
+
+def PrintInfo(recipe_info):
+  print("\n####" + recipe_info[0] + "####" + '\n')
+  print("==Recipe Time==")
+  print("  Prep Time:  " + recipe_info[1][0])
+  print("  Cook Time:  " + recipe_info[1][1])
+  print("  Total Time: " + recipe_info[1][2] + '\n')
+
+  print("==Ingredients==")
+  for item in recipe_info[2]:
+    print("  " + item[1] + " (" + item[0] +")")
+  print("\n==Directions==")
+  for sentence in recipe_info[3]:
+    print("-" + sentence)
+  print('\n')
+  return
 
 utensils = getUtensils()
 cookware = getCookware()
-recipe = RequestURL()
+recipe = RetrieveInfo()
 
 print("Utensils:")
 print utensils
 print('\nCookware:')
 print cookware
-print('\nIngredients')
-print recipe
+PrintInfo(recipe)
+
+
+
