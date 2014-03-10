@@ -2,8 +2,7 @@ import json
 import nltk
 import re, string
 import urllib2
-from BeautifulSoup import BeautifulSoup
-Soup = BeautifulSoup
+from BeautifulSoup import BeautifulSoup as Soup
 import BeautifulSoup
 
 # response = urllib2.urlopen('http://allrecipes.com/Recipe/Lentils-and-Rice-with-Fried-Onions-Mujadarrah/Detail.aspx?soid=carousel_0_rotd&prop24=rotd')
