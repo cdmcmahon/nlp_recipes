@@ -12,7 +12,9 @@ import BeautifulSoup
 #-------------------------------------------------------------------------------
 # Constants and Variables
 #-------------------------------------------------------------------------------
-MEAT = dict(beef = "tofu", chicken = "tofu", pork = "tofu", bacon = "tofu")
+
+MEAT = ["bacon", "beef", "buffalo", "bison", "chicken", "duck", "gizzards", "goose", "grouse", "hen", "lamb", "liver", "lobster", "mutton", "pheasant", "pork", "chop", "quail", "turkey", "fish", "scallops", "shrimp", "veal", "venison"]
+WEIGHT = dict(chop = .25, )
 
 #-------------------------------------------------------------------------------
 # This part gets a list of kitchen tools by parsing the following wikipedia pages:
@@ -110,6 +112,7 @@ class Recipe:
     self.ExtractTime()
     self.ExtractDirections()
     self.ExtractMethod(getTechniques())
+    self.veganize()
     return
 
   def ParsePage(self):
@@ -217,11 +220,20 @@ class Recipe:
   def veganize(self):
     self.title = "Vegetarian " + self.title
     for ingredient in self.ingredients:
-        for M in MEAT.keys:
-            index = find(ingredient, M)
-            if index == -1:
-                continue
-            ingredient = ingredient[0:index-1] + MEAT(M) + ingredient[len(M):]
+        #for M in MEAT.keys:        method = st.stem(method)
+        ingred_list = ingredient[1].split()
+        checker = 0
+        for item in ingred_list:
+          item = st.stem(item)
+          if item in MEAT:
+            checker+=1
+        if checker==len(ingred_list):
+          ingredient[1] = "tofu"
+          #index = find(ingredient, M)
+       #     if index == -1:
+       #         continue
+       #     ingredient = ingredient[0:index-1] + MEAT(M) + ingredient[len(M):]
+    return
 
 
   def __str__(self):
@@ -253,31 +265,6 @@ class Recipe:
 
     return dir
 
-##  def Print(self):
-##    print("\n####" + self.title + "####" + '\n')
-##    print("\n#==========================================#")
-##    print("#  Recipe Time")
-##    print("#==========================================#")
-##    print("-->Prep Time:  " + self.time[0])
-##    print("-->Cook Time:  " + self.time[1])
-##    print("-->Total Time: " + self.time[2] + '\n')
-##    print("\n#==========================================#")
-##    print("#  Ingredients")
-##    print("#==========================================#")
-##    for item in self.ingredients:
-##      print("-->" + item[1] + " (" + item[0] + ")")
-##    print("\n#==========================================#")
-##    print("#  Directions")
-##    print("#==========================================#")
-##    i = 1
-##    for sentence in self.directions:
-##      print("  "+str(i) + ".) " + sentence)
-##      i+= 1
-##    print("\n#==========================================#")
-##    print("#  Preparation Technique")
-##    print("#==========================================#")
-##    print("-->" + self.method + '\n')
-##    return
 
 
 #-------------------------------------------------------------------------------
@@ -286,13 +273,8 @@ class Recipe:
 utensils = getUtensils()
 cookware = getCookware()
 recipe = Recipe()
-#recipe.RetrieveInfo()
-print recipe
 
-print("Utensils:")
-print utensils
-print('\nCookware:')
-print cookware
+print recipe
 
 
 
