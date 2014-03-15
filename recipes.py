@@ -111,7 +111,7 @@ class Recipe:
     self.ExtractDirections()
     self.ExtractMethod(getTechniques())
     return
-  
+
   def ParsePage(self):
     #====request page URL====
     print('\n')
@@ -214,31 +214,60 @@ class Recipe:
           self.method = token
           return
 
-  def Print(self):
-    print("\n####" + self.title + "####" + '\n')
-    print("\n#==========================================#")
-    print("#  Recipe Time")
-    print("#==========================================#")
-    print("-->Prep Time:  " + self.time[0])
-    print("-->Cook Time:  " + self.time[1])
-    print("-->Total Time: " + self.time[2] + '\n')
-    print("\n#==========================================#")
-    print("#  Ingredients")
-    print("#==========================================#")
+  def __str__(self):
+    dir = ("\n####" + self.title + "####" + '\n\n'
+    + "\n#==========================================#\n"
+    + "#  Recipe Time\n"
+    + "#==========================================#\n"
+    + "-->Prep Time:  " + self.time[0] + '\n'
+    + "-->Cook Time:  " + self.time[1] + '\n'
+    + "-->Total Time: " + self.time[2] + '\n\n'
+    + '\n#==========================================#\n'
+    + "#  Ingredients\n"
+    + "#==========================================#\n")
+
     for item in self.ingredients:
-      print("-->" + item[1] + " (" + item[0] + ")")
-    print("\n#==========================================#")
-    print("#  Directions")
-    print("#==========================================#")
-    i = 1
-    for sentence in self.directions:
-      print("  "+str(i) + ".) " + sentence)
-      i+= 1
-    print("\n#==========================================#")
-    print("#  Preparation Technique")
-    print("#==========================================#")
-    print("-->" + self.method + '\n')
-    return
+        dir = dir + "-->" + item[1] + " (" + item[0] + ")\n"
+
+    dir = (dir + "\n#==========================================#\n"
+    + "#  Directions\n"
+    + "#==========================================#\n")
+
+    for i in range(1, len(self.directions)+1):
+        dir = dir + " " + str(i) + ".) " + self.directions[i-1] + '\n'
+
+    dir = (dir + "\n#==========================================#\n"
+    + "#  Preparation Technique\n"
+    + "#==========================================#\n"
+    + "-->" + self.method + '\n\n')
+
+    return dir
+
+##  def Print(self):
+##    print("\n####" + self.title + "####" + '\n')
+##    print("\n#==========================================#")
+##    print("#  Recipe Time")
+##    print("#==========================================#")
+##    print("-->Prep Time:  " + self.time[0])
+##    print("-->Cook Time:  " + self.time[1])
+##    print("-->Total Time: " + self.time[2] + '\n')
+##    print("\n#==========================================#")
+##    print("#  Ingredients")
+##    print("#==========================================#")
+##    for item in self.ingredients:
+##      print("-->" + item[1] + " (" + item[0] + ")")
+##    print("\n#==========================================#")
+##    print("#  Directions")
+##    print("#==========================================#")
+##    i = 1
+##    for sentence in self.directions:
+##      print("  "+str(i) + ".) " + sentence)
+##      i+= 1
+##    print("\n#==========================================#")
+##    print("#  Preparation Technique")
+##    print("#==========================================#")
+##    print("-->" + self.method + '\n')
+##    return
 
 
 #-------------------------------------------------------------------------------
@@ -248,7 +277,7 @@ utensils = getUtensils()
 cookware = getCookware()
 recipe = Recipe()
 #recipe.RetrieveInfo()
-recipe.Print()
+print recipe
 
 print("Utensils:")
 print utensils
