@@ -12,7 +12,7 @@ import BeautifulSoup
 #-------------------------------------------------------------------------------
 # Constants and Variables
 #-------------------------------------------------------------------------------
-
+MEAT = dict(beef = "tofu", chicken = "tofu", pork = "tofu", bacon = "tofu")
 
 #-------------------------------------------------------------------------------
 # This part gets a list of kitchen tools by parsing the following wikipedia pages:
@@ -213,6 +213,16 @@ class Recipe:
         if unicode(temptoken) in methodlist:
           self.method = token
           return
+
+  def veganize(self):
+    self.title = "Vegetarian " + self.title
+    for ingredient in self.ingredients:
+        for M in MEAT.keys:
+            index = find(ingredient, M)
+            if index == -1:
+                continue
+            ingredient = ingredient[0:index-1] + MEAT(M) + ingredient[len(M):]
+
 
   def __str__(self):
     dir = ("\n####" + self.title + "####" + '\n\n'
