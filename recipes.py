@@ -1,3 +1,5 @@
+from alchemyapi import AlchemyAPI
+alchemyapi = AlchemyAPI()
 import json
 import nltk
 from nltk.stem.lancaster import LancasterStemmer
@@ -14,8 +16,8 @@ from fractions import Fraction
 # Constants and Variables
 #-------------------------------------------------------------------------------
 
-MEAT = ["bacon", "beef", "buffalo", "bison", "breast", "chick", "chicken", "chickens", "chuck", "drumstick", "drumsticks", 
-        "duck", "ducks", "eg", "egg", "eggs", "filet", "filets", "gizzard", "gizzards", "goos", "goose", "geese", "gees", "grous", 
+MEAT = ["bacon", "beef", "buffalo", "bison", "breast", "brisket", "chick", "chicken", "chickens", "chuck", "drumstick", "drumsticks", 
+        "duck", "ducks", "eg", "egg", "eggs", "filet", "filets", "gizzard", "gizzards", "goos", "goose", "geese", "gees", "grous", "ground", 
         "ham", "hen", "hens", "lamb", "leg", "legs", "liv", "liver", "livers", 
         "lobst", "lobster", "lobsters", "mignon", "mutton", "pheas", "pheasant", "pork", "rib", "ribs", "ribeye", "ribeyes", 
         "chop", "chops", "quail", "roast", "skinless", "steak", "steak", "strip", "strips", "thigh", "thighs", "turkey", "turkeys",
@@ -216,19 +218,25 @@ class Recipe:
             i-= 1
           #convert fractions to decimals
           else:
-            amounttext[i] = str(float(Fraction(item)))
+            try:
+              amounttext[i] = str(float(Fraction(item)))
+            except:
+              print "ERROR: Unrecognized quantity"
+              amounttext[i] = ""
           i+= 1
         amounttext = " ".join(amounttext)
       else:
         amounttext = 'None'
       tempDict['measurement'] = quantitytext
       tempDict['quantity'] = amounttext
+      tempDict['descriptor'] = "None"
+      tempDict['preparation'] = "None"
       #extract ingredient name
       ingred = listing.find('span', id="lblIngName")
       if ingred:
         ingredtext = ingred.getText().lower()
       else:
-        ingredtext = 'None'
+        break
       tempDict['name'] = ingredtext
       self.recipe_info['ingredients'].append(tempDict)
     return
@@ -338,33 +346,29 @@ class Recipe:
     counter = 0
     print("Updating ingredients...")
     for ingredient in self.recipe_info['ingredients']:
-      #remove information in parentheses
-      ingredient['name'] = removeParen(ingredient['name'])
-      ingred_list = ingredient['name'].split()
-      print(ingred_list)
-      checker = 0
-      new_weight = 0
-      #change butter, cheese, etc into vegan options
-      for item in NONVEGAN:
-        if item in ingredient['name']:
-          ingredient['name'] = "vegan " + ingredient['name']
+      temp = alchemyapi.keywords('text', ingredient['name'], {'maxRetrieve': 1, 'sentiment':1})
+      for keyword in temp['keywords']:
+        ntemp = keyword['text']
+        ntemp = ntemp.split()
+        for item in ntemp:
+          if item in NONVEGAN:
+            ingredient['name'] = "vegan " + ingredient['name']
       #change broths, stocks, etc. into vegan options
-      if ingredient['name'].replace(" ", "") in VEGANCHANGE.keys():
-        for entry in range(0,len(self.directions)):
-          self.directions[entry] = self.directions[entry].replace(ingredient['name'], VEGANCHANGE[ingredient['name'].replace(" ", "")])
-        ingredient['name'] = VEGANCHANGE[ingredient['name'].replace(" ", "")]
+        if "".join(ntemp) in VEGANCHANGE.keys():
+          for entry in range(0,len(self.directions)):
+            self.directions[entry] = self.directions[entry].replace(ingredient['name'], VEGANCHANGE[ingredient['name'].replace(" ", "")])
+          ingredient['name'] = VEGANCHANGE["".join(ntemp)]
       #replace meat with tofu
-      checker = True
-      for ing in ingred_list:
-        if ing in EXCEPTIONS:
-          checker = False
-      if checker:
-        for item in MEAT:
-          if item in ingred_list:
-            ingredient['name'] = 'tofu'
-            self.updateDirections(item)
-        for item in FISH:
-          if item in ingred_list:
+        checker = True
+        counter = 0
+        for item in ntemp:
+          if item in EXCEPTIONS:
+            checker = False
+        if checker:
+          for item in ntemp:
+            if item in MEAT or item in FISH:
+              counter+= 1
+          if counter==len(ntemp):
             ingredient['name'] = 'tofu'
             self.updateDirections(item)
     if not self.verifyVegan():
@@ -372,12 +376,7 @@ class Recipe:
     return
 
   def updateDirections(self, fullingred):
-    # print("Updating recipe instructions...")
-    # if fullingred[-1]=='s':
-    #   ingred.insert(0, fullingred[:len(fullingred)-1])
-    # ingred.insert(0, fullingred)
     for entry in range(0,len(self.directions)):
-    #   for item in ingred:
       self.directions[entry] = self.directions[entry].replace(fullingred, "tofu")
       self.directions[entry] = self.directions[entry].replace("meat", "tofu")
       self.directions[entry] = self.directions[entry].replace("them", "it")
@@ -389,13 +388,16 @@ class Recipe:
     print("Verifying recipe...")
     for ingred in self.recipe_info['ingredients']:
       counter = 0
-      temp = ingred['name'].split()
-      for item in temp:
-        item = st.stem(item)
-        if item in MEAT or item in NONVEGAN or item in FISH:
-          counter+= 1
-      if counter==len(temp):
-        return False
+      temp = alchemyapi.keywords('text', ingred['name'], {'maxRetrieve': 1})
+      for keyword in temp['keywords']:
+        ntemp = keyword['text']
+        ntemp = ntemp.split()
+        for item in ntemp:
+          item = st.stem(item)
+          if item in MEAT or item in NONVEGAN or item in FISH:
+            counter+= 1
+        if counter==len(ntemp):
+          return False
     return True
 
   def Normalize(self):
@@ -464,6 +466,7 @@ def Initialize():
     recipe = Recipe()
     recipe.veganize()
     print recipe
+    print(recipe.recipe_info)
   if request=='e':
     print('\n')
     return
