@@ -1,5 +1,6 @@
 from alchemyapi import AlchemyAPI
 alchemyapi = AlchemyAPI()
+import pprint
 import json
 import nltk
 from nltk.stem.lancaster import LancasterStemmer
@@ -21,7 +22,7 @@ MEAT = ["bacon", "beef", "buffalo", "bison", "breast", "brisket", "chick", "chic
         "ham", "hen", "hens", "lamb", "leg", "legs", "liv", "liver", "livers", 
         "lobst", "lobster", "lobsters", "mignon", "mutton", "pheas", "pheasant", "pork", "rib", "ribs", "ribeye", "ribeyes", 
         "chop", "chops", "quail", "roast", "skinless", "steak", "steak", "strip", "strips", "thigh", "thighs", "turkey", "turkeys",
-         "fish", "scallop", "scallops", "shrimp", "tenderloin", "veal", "venison", "wing", "wings"]
+         "fish", "scallop", "scallops", "shrimp", "tenderloin", "veal", "venison", "wing", "wings", "lean", "sausage"]
 
 FISH = ["catfish", "pollock", "mackerel", "flounder", "halibut", "mahi", "tuna", "salmon", "blue gill", "shark",
         "grouper", "haddock", "bass", "trout", "crappie", "bluefish", "bluefin", "cod", "carp", "sheephead", 
@@ -154,10 +155,9 @@ class Recipe:
     self.recipe_soup = ""
     self.recipe_info = dict(method= "", ingredients= [], tools= [], time = dict())
     self.title = ""
-    self.ingredients = []
 
     self.cooking_tools = getUtensils() + getCookware()
-
+    self.ingredients = []
     self.directions = []
     self.RetrieveInfo()
 
@@ -307,6 +307,7 @@ class Recipe:
       self.directions[i] = " ".join(self.directions[i])
     if not self.directions[-1]:
       self.directions = self.directions[:len(self.directions)-1]
+    self.recipe_info['instructions'] = self.directions
     return
 
   def ExtractMethod(self, methodlist):
@@ -335,14 +336,14 @@ class Recipe:
     return
 
 
-  def veganize(self):
-    print("Preparing to veganize...")
+  def vegetarianize(self):
+    print("Preparing to vegetarianize...")
     #if already vegan, do nothing    
-    if self.verifyVegan():
-      print("\n\n*RECIPE IS ALREADY VEGAN FRIENDLY!*")
+    if self.verifyVegetarian():
+      print("\n\n*RECIPE IS ALREADY VEGETARIAN FRIENDLY!*")
       return
     #else, make it vegan
-    self.title = "Vegan " + self.title
+    self.title = "Vegetarian " + self.title
     counter = 0
     print("Updating ingredients...")
     for ingredient in self.recipe_info['ingredients']:
@@ -350,9 +351,7 @@ class Recipe:
       for keyword in temp['keywords']:
         ntemp = keyword['text']
         ntemp = ntemp.split()
-        for item in ntemp:
-          if item in NONVEGAN:
-            ingredient['name'] = "vegan " + ingredient['name']
+
       #change broths, stocks, etc. into vegan options
         if "".join(ntemp) in VEGANCHANGE.keys():
           for entry in range(0,len(self.directions)):
@@ -369,22 +368,25 @@ class Recipe:
             if item in MEAT or item in FISH:
               counter+= 1
           if counter==len(ntemp):
+            self.updateDirections(item, ingredient['name'].split())
             ingredient['name'] = 'tofu'
-            self.updateDirections(item)
-    if not self.verifyVegan():
+    if not self.verifyVegetarian():
       print("COULD NOT BE TRANSFORMED INTO VEGAN FRIENDLY RECIPE")
+    self.recipe_info['instructions'] = self.directions
     return
 
-  def updateDirections(self, fullingred):
-    for entry in range(0,len(self.directions)):
-      self.directions[entry] = self.directions[entry].replace(fullingred, "tofu")
-      self.directions[entry] = self.directions[entry].replace("meat", "tofu")
-      self.directions[entry] = self.directions[entry].replace("them", "it")
-      self.directions[entry] = self.directions[entry].replace("tofus", "tofu")
-      self.directions[entry] = self.directions[entry].replace("tofu tofu", "tofu")
+  def updateDirections(self, fullingred, ingredlist):
+    ingredlist.insert(0, fullingred)
+    for item in ingredlist:
+      for entry in range(0,len(self.directions)):
+        self.directions[entry] = self.directions[entry].replace(item, "tofu")
+        self.directions[entry] = self.directions[entry].replace("meat", "tofu")
+        self.directions[entry] = self.directions[entry].replace("them", "it")
+        self.directions[entry] = self.directions[entry].replace("tofus", "tofu")
+        self.directions[entry] = self.directions[entry].replace("tofu tofu", "tofu")
     return
 
-  def verifyVegan(self):
+  def verifyVegetarian(self):
     print("Verifying recipe...")
     for ingred in self.recipe_info['ingredients']:
       counter = 0
@@ -455,7 +457,7 @@ class Recipe:
 
 def Initialize():
   print("\nWhat transformation would you like to perform?")
-  print(" [V] Create a vegan option from an existing recipe")
+  print(" [V] Create a vegetarian option from an existing recipe")
   print(" [E] Exit")
   request = raw_input("--->")
   request = request.lower()
@@ -464,9 +466,14 @@ def Initialize():
   if request=='v':
     print('\n')
     recipe = Recipe()
-    recipe.veganize()
+    recipe.vegetarianize()
     print recipe
-    print(recipe.recipe_info)
+    pprint.pprint(recipe.recipe_info)
+    #for x in recipe.recipe_info:
+    #  print(x)
+    #  for y in recipe.recipe_info[x]:
+    #    print(y, ':', x[y])
+
   if request=='e':
     print('\n')
     return
