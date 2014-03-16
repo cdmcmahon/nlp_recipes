@@ -342,6 +342,7 @@ class Recipe:
     if self.verifyVegetarian():
       print("\n\n*RECIPE IS ALREADY VEGETARIAN FRIENDLY!*")
       return
+    option = self.checkFish()
     #else, make it vegan
     self.title = "Vegetarian " + self.title
     counter = 0
@@ -368,22 +369,34 @@ class Recipe:
             if item in MEAT or item in FISH:
               counter+= 1
           if counter==len(ntemp):
-            self.updateDirections(item, ingredient['name'].split())
-            ingredient['name'] = 'tofu'
+            self.updateDirections(item, ingredient['name'].split(), option[0])
+            ingredient['name'] = option[0]
+            if option[1]:
+              ingredient['measurement'] = option[1]
     if not self.verifyVegetarian():
       print("COULD NOT BE TRANSFORMED INTO VEGAN FRIENDLY RECIPE")
     self.recipe_info['instructions'] = self.directions
     return
 
-  def updateDirections(self, fullingred, ingredlist):
+  def checkFish(self):
+    print('\n')
+    response = raw_input("Do you eat fish? (Y or N) ")
+    print('\n')
+    response = response.lower()
+    if not response in ['y', 'n']:
+      return self.checkFish()
+    if response=='y':
+      return ['tilapia', 'filets']
+    return ['tofu', None]
+
+  def updateDirections(self, fullingred, ingredlist, option):
     ingredlist.insert(0, fullingred)
     for item in ingredlist:
       for entry in range(0,len(self.directions)):
-        self.directions[entry] = self.directions[entry].replace(item, "tofu")
-        self.directions[entry] = self.directions[entry].replace("meat", "tofu")
-        self.directions[entry] = self.directions[entry].replace("them", "it")
-        self.directions[entry] = self.directions[entry].replace("tofus", "tofu")
-        self.directions[entry] = self.directions[entry].replace("tofu tofu", "tofu")
+        self.directions[entry] = self.directions[entry].replace(item, option)
+        self.directions[entry] = self.directions[entry].replace("meat", option)
+        self.directions[entry] = self.directions[entry].replace("tofus", option)
+        self.directions[entry] = self.directions[entry].replace(str(option + ' ' + option), option)
     return
 
   def verifyVegetarian(self):
