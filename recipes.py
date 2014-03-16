@@ -14,7 +14,7 @@ import BeautifulSoup
 #-------------------------------------------------------------------------------
 
 MEAT = ["bacon", "beef", "buffalo", "bison", "breast", "chick", "chuck", 
-        "duck", "filet", "gizzard", "goos", "ground", "grous", "ham", "hen", "lamb", "liv", 
+        "duck", "filet", "gizzard", "goos", "grous", "ham", "hen", "lamb", "liv", 
         "lobst", "mignon", "mutton", "pheas", "pork", "rib", "ribeye", "chop", "quail", "roast", 
         "skinless", "steak", "strips", "turkey", "fish", "scallop", "shrimp", "veal", "venison"]
 
@@ -29,6 +29,9 @@ VEGANCHANGE = dict(beefbouillon = "vegetable bouillon", beefbroth = "french onio
 DESCRIPTORS = ["fat-free", "thick", "half", "halves", "boneless", "skinless", ",", "strip", "flank", "cut", "thin", "long",
               "into", "in", "on", "with"]
 
+QUANTITIES = ["teaspoon", "dessertspoon", "tablespoon", "ounce", "fluid ounce", "cup", "pint", "pinch", "quart", "gallon", "liter"]
+ABR_QUANTITIES = dict(tsp = "teaspoon", tbsp = "tablespoon", floz = "fluid ounce", oz = "ounce", pt = "pint", qt = "quart", gal = "gallon")
+
 #-------------------------------------------------------------------------------
 # This part gets a list of kitchen tools by parsing the following wikipedia pages:
 # List of food preparation utensils
@@ -38,18 +41,31 @@ DESCRIPTORS = ["fat-free", "thick", "half", "halves", "boneless", "skinless", ",
 
 # Utensils
 def getUtensils():
-  utensils_response = urllib2.urlopen('http://en.wikipedia.org/wiki/List_of_food_preparation_utensils')
+  utensils_response = urllib2.urlopen("https://en.wikipedia.org/w/index.php?title=Category:Cooking_utensils&gettingStartedReturn=true")
   utensils_html = utensils_response.read()
   utensils_soup = Soup(utensils_html)
   utensils = []
   i=1
+  for li in utensils_soup.findAll('li'):
+    if i>6 and i<102:
+      text = removeParen(li.getText().lower())
+      utensils.append(text)
+    i = i+1
+  #grab utensils from another page
+  utensils_response = urllib2.urlopen('http://en.wikipedia.org/wiki/List_of_food_preparation_utensils')
+  utensils_html = utensils_response.read()
+  utensils_soup = Soup(utensils_html)
+  utensils2 = []
+  i = 1
   for table in utensils_soup.findAll('table'):
     if(i==1):
       for a in table.findAll('tr'):
         link = a.find('th').find('a')
         if(link):
-          utensils.append(link.string)
-    i = i+1
+          utensils2.append(removeParen(link.string.lower()))
+    i+= 1
+  #combine the two lists
+  all_utensils = list(set(utensils) - set(utensils2)) + utensils2
   return utensils
 
 # Cookware and bakeware
@@ -67,10 +83,10 @@ def getCookware():
       for li in ul.findAll('li'):
         if(li.string):
           item = re.sub(r'\([^)]*\)', '', li.string)
-          cookware.append(item)
+          cookware.append(removeParen(item.lower()))
         else:
           link = li.find('a')
-          cookware.append(link.string)
+          cookware.append(removeParen(link.string.lower()))
     i = i+1
   return cookware
 
@@ -98,6 +114,13 @@ def getTechniques():
 
   return techniques
 
+def removeParen(text):
+  p = re.compile(r'\([^)]*\)')
+  text = re.sub(p, '', text)
+  if text[0]==' ':
+    text = text[1:]
+  return text
+
 
 #-------------------------------------------------------------------------------
 # Class related to the specific recipe.
@@ -107,26 +130,33 @@ def getTechniques():
 #-------------------------------------------------------------------------------
 class Recipe:
   def __init__(self):
+    print("Initializing...")
     self.pageurl = ""
     self.recipe_html = ""
     self.recipe_soup = ""
+    self.recipe_info = dict(method= "", ingredients= [], tools= [], time = dict())
     self.title = ""
     self.ingredients = []
-    self.time = []
+
+    self.cooking_tools = getUtensils() + getCookware()
+
     self.directions = []
-    self.method = ""
     self.RetrieveInfo()
+    print(self.recipe_info)
 
   def RetrieveInfo(self):
     self.ParsePage()
     #====retrieve specific items from the page====
+    print("Preparing to retrieve information...")
     self.ExtractTitle()
     self.ExtractIngredients()
     self.ExtractTime()
     self.ExtractDirections()
-    self.removePunct()
+    print("Normalizing information...")
+    self.Normalize()
     self.removeDescriptors()
     self.ExtractMethod(getTechniques())
+    self.ExtractTools()
     return
 
   def ParsePage(self):
@@ -135,17 +165,21 @@ class Recipe:
     self.pageurl = raw_input("Please input the URL of a recipe from ALLRecipes.com: ")
     print('\n')
     #====convert the page to HTML that can be handled by Beautiful Soup====
+    print("Loading page...")
     page = urllib2.urlopen(self.pageurl)
+    print("Converting page...")
     self.recipe_html = page.read()
     self.recipe_soup = Soup(self.recipe_html)
     return
 
   def ExtractTitle(self):
+    print("Extracting recipe...")
     listing = self.recipe_soup.find('span', id="lblTitle")
     self.title = listing.getText()
     return
 
   def ExtractIngredients(self):
+    print("Extracting recipe ingredients...")
     for listing in self.recipe_soup.findAll('p', itemprop="ingredients"):
       amount = listing.find('span', id="lblIngAmount")
       if amount:
@@ -162,91 +196,112 @@ class Recipe:
 
   def ExtractTime(self):
     #get the prep time minutes and hours
+    print("Extracting preparation time...")
     listingM = self.recipe_soup.find('span', id="prepMinsSpan")
     listingH = self.recipe_soup.find('span', id="prepHoursSpan")
     if listingM and listingH:
       preptimeM = listingM.getText()
       preptimeH = listingH.getText()
       preptime = preptimeH+","+preptimeM
-      self.time.append(preptime)
+      self.recipe_info['time']['preptime'] = preptime
     elif listingM:
       preptimeM = listingM.getText()
-      self.time.append(preptimeM)
+      self.recipe_info['time']['preptime'] = preptimeM
     elif listingH:
       preptimeH = listingH.getText()
-      self.time.append(preptimeH)
+      self.recipe_info['time']['preptime'] = preptimeH
     else:
-      self.time.append("")
+      self.recipe_info['time']['preptime'] = ""
     #get the cook time minutes and hours
+    print("Extracting cooking time...")
     listingM = self.recipe_soup.find('span', id="cookMinsSpan")
     listingH = self.recipe_soup.find('span', id="cookHoursSpan")
     if listingM and listingH:
       cooktimeM = listingM.getText()
       cooktimeH = listingH.getText()
       cooktime = cooktimeH+","+cooktimeM
-      self.time.append(cooktime)
+      self.recipe_info['time']['cooktime'] = cooktime
     elif listingM:
       cooktimeM = listingM.getText()
-      self.time.append(cooktimeM)
+      self.recipe_info['time']['cooktime'] = cooktimeM
     elif listingH:
       cooktimeH = listingH.getText()
-      self.time.append(cooktimeH)
+      self.recipe_info['time']['cooktime'] = cooktimeH
     else:
-      self.time.append("")
+      self.recipe_info['time']['cooktime'] = ""
     #get the total time minutes and hours
+    print("Extracting total time...")
     listingM = self.recipe_soup.find('span', id="totalMinsSpan")
     listingH = self.recipe_soup.find('span', id="totalHoursSpan")
     if listingM and listingH:
       totaltimeM = listingM.getText()
       totaltimeH = listingH.getText()
       totaltime = totaltimeH+","+totaltimeM
-      self.time.append(totaltime)
+      self.recipe_info['time']['totaltime'] = totaltime
     elif listingM:
       totaltimeM = listingM.getText()
-      self.time.append(totaltimeM)
+      self.recipe_info['time']['totaltime'] = totaltimeM
     elif listingH:
       totaltimeH = listingH.getText()
-      self.time.append(totaltimeH)
+      self.recipe_info['time']['totaltime'] = totaltimeH
     else:
-      self.time.append("")
+      self.recipe_info['time']['totaltime'] = ""
     return
 
   def ExtractDirections(self):
+    print("Extracting recipe instructions...")
     desc = self.recipe_soup.find('ol')
     directions = desc.getText()
-    sent_detector = nltk.data.load('tokenizers/punkt/english.pickle')
-    self.directions = sent_detector.tokenize(directions)
+    #split and normalize directions
+    Enders = re.compile('[.!?]')
+    self.directions = Enders.split(directions)
+    for i in range(0,len(self.directions)):
+      self.directions[i] = self.directions[i].split()
+      self.directions[i] = " ".join(self.directions[i])
+    if not self.directions[-1]:
+      self.directions = self.directions[:len(self.directions)-1]
     return
 
   def ExtractMethod(self, methodlist):
+    print("Extracting cooking method...")
     for sentence in self.directions:
       sentence = sentence.split()
       for token in sentence:
-        if '.' in token:
-          index = token.index('.')
-          token2 = token[index+1:]
-          temptoken2 = st.stem(token2)
-          token = token[:index]
-          temptoken = st.stem(token)
-          if unicode(temptoken2) in methodlist:
-            self.method = token2
-            return
-        else:
-          temptoken = st.stem(token)
+        temptoken = st.stem(token)
         if unicode(temptoken) in methodlist:
-          self.method = token
+          self.recipe_info['method'] = token
           return
+    return
+
+  def ExtractTools(self):
+    print("Determining cooking tools...")
+    tools = []
+    for item in self.cooking_tools:
+      for ingred in self.ingredients:
+        if item in ingred:
+          tools.append(item)
+      for direct in self.directions:
+        if item in direct:
+          tools.append(item)
+    tools = list(set(tools))
+    self.recipe_info['tools'] = tools
+    return
+
 
   def veganize(self):
+    print("Preparing to veganize...")
     #if already vegan, do nothing
     if "vegan" in self.title or "Vegan" in self.title:
-      return
+      if self.verifyVegan:
+        print("*RECIPE IS ALREADY VEGAN FRIENDLY!*")
+        return
     #else, make it vegan
-    self.title = "Vegetarian " + self.title
+    self.title = "Vegan " + self.title
     counter = 0
+    print("Updating ingredients...")
     for ingredient in self.ingredients:
       #remove information in parentheses
-      ingredient[1] = self.removeParen(ingredient[1])
+      ingredient[1] = removeParen(ingredient[1])
       ingred_list = ingredient[1].split()
       checker = 0
       new_weight = 0
@@ -264,7 +319,6 @@ class Recipe:
         item = st.stem(item)
         if item in MEAT:
           if item in WEIGHT.keys():
-            print(ingredient[1])
             new_weight = int(ingredient[0])*WEIGHT[item]
           else:
             new_weight = 0
@@ -272,12 +326,15 @@ class Recipe:
       if checker==len(ingred_list):
         self.updateDirections(ingredient[1], ingred_list)
         if new_weight>0:
-          ingredient[1] = "tofu"
           ingredient[0] = str(new_weight) + " ounces"
+        ingredient[1] = "tofu"
       checker+= 1
+    if not self.verifyVegan():
+      print("COULD NOT BE TRANSFORMED INTO VEGAN FRIENDLY RECIPE")
     return
 
   def updateDirections(self, fullingred, ingred):
+    print("Updating recipe instructions...")
     if fullingred[-1]=='s':
       ingred.insert(0, fullingred[:len(fullingred)-1])
     ingred.insert(0, fullingred)
@@ -289,15 +346,21 @@ class Recipe:
         self.directions[entry] = self.directions[entry].replace("tofus", "tofu")
     return
 
-  def removeParen(self, text):
-    p = re.compile(r'\([^)]*\)')
-    text = re.sub(p, '', text)
-    if text[0]==' ':
-      text = text[1:]
-    return text
+  def verifyVegan(self):
+    print("Verifying recipe...")
+    for ingred in self.ingredients:
+      counter = 0
+      temp = ingred[1].split()
+      for item in temp:
+        if item in MEAT:
+          counter+= 1
+      if counter==len(temp):
+        return False
+    return True
 
-  def removePunct(self):
+  def Normalize(self):
     for entry in self.ingredients:
+      entry[0] = re.sub(r'[^\w\s]','',entry[0])
       entry[1] = re.sub(r'[^\w\s]','',entry[1])
     return
 
@@ -313,19 +376,25 @@ class Recipe:
     return " ".join(item_list)
 
   def __str__(self):
-    dir = ("\n####" + self.title + "####" + '\n'
+    dir = ("\n\n\n####" + self.title + "####" + '\n'
     + "\n#==========================================#\n"
     + "#  Recipe Time\n"
     + "#==========================================#\n"
-    + "-->Prep Time:  " + self.time[0] + '\n'
-    + "-->Cook Time:  " + self.time[1] + '\n'
-    + "-->Total Time: " + self.time[2] + '\n'
+    + "-->Prep Time:  " + self.recipe_info['time']['preptime'] + '\n'
+    + "-->Cook Time:  " + self.recipe_info['time']['cooktime'] + '\n'
+    + "-->Total Time: " + self.recipe_info['time']['totaltime'] + '\n'
     + '\n#==========================================#\n'
     + "#  Ingredients\n"
     + "#==========================================#\n")
 
     for item in self.ingredients:
         dir = dir + "-->" + item[1] + " (" + item[0] + ")\n"
+
+    dir = (dir + "\n##==========================================#\n"
+      + "#  Tools\n"
+      + "#==========================================#\n")
+    for item in self.recipe_info['tools']:
+      dir = dir + "-->" + item + '\n'
 
     dir = (dir + "\n#==========================================#\n"
     + "#  Directions\n"
@@ -337,22 +406,25 @@ class Recipe:
     dir = (dir + "\n#==========================================#\n"
     + "#  Preparation Technique\n"
     + "#==========================================#\n"
-    + "-->" + self.method + '\n\n')
+    + "-->" + self.recipe_info['method'] + '\n\n')
 
     return dir
+
 
 
 def Initialize():
   print("\nWhat transformation would you like to perform?")
   print(" [V] Create a vegan option from an existing recipe")
   print(" [E] Exit")
-  request = raw_input("-->")
+  request = raw_input("--->")
   request = request.lower()
   if not request in ['v', 'e']:
     return Initialize()
   if request=='v':
+    print('\n')
     recipe = Recipe()
     recipe.veganize()
+    print(recipe.recipe_info)
     print recipe
   if request=='e':
     print('\n')
@@ -363,8 +435,6 @@ def Initialize():
 #-------------------------------------------------------------------------------
 # Calling the functions defined about
 #-------------------------------------------------------------------------------
-#utensils = getUtensils()
-#cookware = getCookware()
 
 Initialize()
 
