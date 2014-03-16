@@ -140,7 +140,7 @@ def removeParen(text):
     text = text[1:]
   return text
 
-
+original_recipe = dict()
 #-------------------------------------------------------------------------------
 # Class related to the specific recipe.
 #   -Requests URL for recipe
@@ -150,7 +150,7 @@ def removeParen(text):
 class Recipe:
   def __init__(self):
     print("Initializing...")
-    self.pageurl = ""
+    self.pageurl = None
     self.recipe_html = ""
     self.recipe_soup = ""
     self.recipe_info = dict(method= "", ingredients= [], tools= [], time = dict())
@@ -161,8 +161,8 @@ class Recipe:
     self.directions = []
     self.RetrieveInfo()
 
-  def RetrieveInfo(self):
-    self.ParsePage()
+  def RetrieveInfo(self, url=None):
+    self.ParsePage(url)
     #====retrieve specific items from the page====
     print("Preparing to retrieve information...")
     self.ExtractTitle()
@@ -171,23 +171,29 @@ class Recipe:
     self.ExtractDirections()
     print("Normalizing information...")
     self.Normalize()
-    self.removeDescriptors()
     self.ExtractMethod(getTechniques())
     self.ExtractTools()
     return
 
-  def ParsePage(self):
+  def ParsePage(self, url):
+    if url:
+      page = urllib2.urlopen(self.pageurl)
+      print("Converting page...")
+      self.recipe_html = page.read()
+      self.recipe_soup = Soup(self.recipe_html)
+      return
+    else:
     #====request page URL====
-    print('\n')
-    self.pageurl = raw_input("Please input the URL of a recipe from AllRecipes.com: ")
-    print('\n')
-    #====convert the page to HTML that can be handled by Beautiful Soup====
-    print("Loading page...")
-    page = urllib2.urlopen(self.pageurl)
-    print("Converting page...")
-    self.recipe_html = page.read()
-    self.recipe_soup = Soup(self.recipe_html)
-    return
+      print('\n')
+      self.pageurl = raw_input("Please input the URL of a recipe from AllRecipes.com: ")
+      print('\n')
+      #====convert the page to HTML that can be handled by Beautiful Soup====
+      print("Loading page...")
+      page = urllib2.urlopen(self.pageurl)
+      print("Converting page...")
+      self.recipe_html = page.read()
+      self.recipe_soup = Soup(self.recipe_html)
+      return
 
   def ExtractTitle(self):
     print("Extracting recipe...")
@@ -371,13 +377,12 @@ class Recipe:
           if counter==len(ntemp):
             self.updateDirections(item, ingredient['name'].split(), option[0])
             ingredient['name'] = option[0]
-            if option[1]:
-              ingredient['measurement'] = option[1]
+            ingredient['measurement'] = option[1]
     if not self.verifyVegetarian():
       print("COULD NOT BE TRANSFORMED INTO VEGAN FRIENDLY RECIPE")
     self.recipe_info['instructions'] = self.directions
     return
-
+  #check if vegetarian option can include fish
   def checkFish(self):
     print('\n')
     response = raw_input("Do you eat fish? (Y or N) ")
@@ -387,7 +392,7 @@ class Recipe:
       return self.checkFish()
     if response=='y':
       return ['tilapia', 'filets']
-    return ['tofu', None]
+    return ['tofu', 'pounds']
 
   def updateDirections(self, fullingred, ingredlist, option):
     ingredlist.insert(0, fullingred)
@@ -420,16 +425,18 @@ class Recipe:
       entry['name'] = re.sub(r'[^\w\s]','',entry['name'])
     return
 
-  def removeDescriptors(self):
-    for entry in range(0,len(self.ingredients)):
-      self.recipe_info['ingredients']['name'] = self.removeDescHelper(self.recipe_info['ingredients']['name'].split())
-    return
-
-  def removeDescHelper(self, item_list):
-    for desc in DESCRIPTORS:
-      if desc in item_list:
-        item_list.remove(desc)
-    return " ".join(item_list)
+  def revert(self):
+    print('\n')
+    response = raw_input("Would you like to revert to the original recipe? (Y or N)? ")
+    response = response.lower()
+    if not response in ['y', 'n']:
+      return self.revert()
+    if response=='y':
+      self.recipe_info.clear()
+      self.recipe_info = dict(method= "", ingredients= [], tools= [], time = dict())
+      self.RetrieveInfo(self.pageurl)
+      return True
+    return False
 
   def __str__(self):
     dir = ("\n\n\n####" + self.title + "####" + '\n'
@@ -481,12 +488,10 @@ def Initialize():
     recipe = Recipe()
     recipe.vegetarianize()
     print recipe
+    answer = recipe.revert()
+    if answer:
+      print recipe
     pprint.pprint(recipe.recipe_info)
-    #for x in recipe.recipe_info:
-    #  print(x)
-    #  for y in recipe.recipe_info[x]:
-    #    print(y, ':', x[y])
-
   if request=='e':
     print('\n')
     return
