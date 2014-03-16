@@ -6,6 +6,7 @@ import re, string
 import urllib2
 from BeautifulSoup import BeautifulSoup as Soup
 import BeautifulSoup
+from fractions import Fraction
 
 # response = urllib2.urlopen('http://allrecipes.com/Recipe/Lentils-and-Rice-with-Fried-Onions-Mujadarrah/Detail.aspx?soid=carousel_0_rotd&prop24=rotd')
 
@@ -13,10 +14,20 @@ import BeautifulSoup
 # Constants and Variables
 #-------------------------------------------------------------------------------
 
-MEAT = ["bacon", "beef", "buffalo", "bison", "breast", "chick", "chuck", 
-        "duck", "filet", "gizzard", "goos", "grous", "ham", "hen", "lamb", "liv", 
-        "lobst", "mignon", "mutton", "pheas", "pork", "rib", "ribeye", "chop", "quail", "roast", 
-        "skinless", "steak", "strips", "turkey", "fish", "scallop", "shrimp", "veal", "venison"]
+MEAT = ["bacon", "beef", "buffalo", "bison", "breast", "chick", "chicken", "chickens", "chuck", "drumstick", "drumsticks", 
+        "duck", "ducks", "eg", "egg", "eggs", "filet", "filets", "gizzard", "gizzards", "goos", "goose", "geese", "gees", "grous", 
+        "ham", "hen", "hens", "lamb", "leg", "legs", "liv", "liver", "livers", 
+        "lobst", "lobster", "lobsters", "mignon", "mutton", "pheas", "pheasant", "pork", "rib", "ribs", "ribeye", "ribeyes", 
+        "chop", "chops", "quail", "roast", "skinless", "steak", "steak", "strip", "strips", "thigh", "thighs", "turkey", "turkeys",
+         "fish", "scallop", "scallops", "shrimp", "tenderloin", "veal", "venison", "wing", "wings"]
+
+FISH = ["catfish", "pollock", "mackerel", "flounder", "halibut", "mahi", "tuna", "salmon", "blue gill", "shark",
+        "grouper", "haddock", "bass", "trout", "crappie", "bluefish", "bluefin", "cod", "carp", "sheephead", 
+        "snapper", "mahi-mahi", "perch", "panfish", "yellowfin", "walleye", "tilapia", "smallmouth", "largemouth",
+        "roughy", "pollock", "rainbow", "sole"]
+
+EXCEPTIONS = ["season", "seasoning", "powder", "powders", "glaz", "glaze", "sauce", "sauc", "sauces", 
+              "spice", "spic", "spices", "mix"]
 
 WEIGHT = dict(bacon = .66, breast = 6, chicken = 64, chop = 4, duck = 64, turkey = 160) #in ounces
 NONVEGAN = ["butter", "cheese"]
@@ -27,10 +38,15 @@ VEGANCHANGE = dict(beefbouillon = "vegetable bouillon", beefbroth = "french onio
                     vealstock = "vegetable stock", vealbouillon = "vegetable bouillon", shrimpbouillon = "shrimp bouillon")
 
 DESCRIPTORS = ["fat-free", "thick", "half", "halves", "boneless", "skinless", ",", "strip", "flank", "cut", "thin", "long",
-              "into", "in", "on", "with"]
+              "into"]
 
-QUANTITIES = ["teaspoon", "dessertspoon", "tablespoon", "ounce", "fluid ounce", "cup", "pint", "pinch", "quart", "gallon", "liter"]
-ABR_QUANTITIES = dict(tsp = "teaspoon", tbsp = "tablespoon", floz = "fluid ounce", oz = "ounce", pt = "pint", qt = "quart", gal = "gallon")
+QUANTITIES = ["teaspoon", "dessertspoon", "tablespoon", "ounce", "ount", "pound", "fillet", "fluid ounce", "can", "cup", "pack", "package", 
+              "pint", "pinch", "quart", "gallon", "liter", "slic", "slice", "bottle", "bottl", "clove", "clov",
+              "teaspoons", "dessertspoons", "tablespoons", "ounces", "ounts", "pounds", "fillets", "fluid ounces", "cans", "cups", "packs", 
+              "packages" "pints", "pinches", "quarts", "gallons", "liters", "slices", "bottles", "cloves"]
+
+ABR_QUANTITIES = dict(tsp = "teaspoon", tsps = "teaspoons", tbsp = "tablespoon", tbsps = "tablespoons", lbs = "pounds", lb = "pound", 
+                      floz = "fluid ounce", oz = "ounce", pt = "pint", qt = "quart", gal = "gallon")
 
 #-------------------------------------------------------------------------------
 # This part gets a list of kitchen tools by parsing the following wikipedia pages:
@@ -142,7 +158,6 @@ class Recipe:
 
     self.directions = []
     self.RetrieveInfo()
-    print(self.recipe_info)
 
   def RetrieveInfo(self):
     self.ParsePage()
@@ -162,7 +177,7 @@ class Recipe:
   def ParsePage(self):
     #====request page URL====
     print('\n')
-    self.pageurl = raw_input("Please input the URL of a recipe from ALLRecipes.com: ")
+    self.pageurl = raw_input("Please input the URL of a recipe from AllRecipes.com: ")
     print('\n')
     #====convert the page to HTML that can be handled by Beautiful Soup====
     print("Loading page...")
@@ -181,17 +196,41 @@ class Recipe:
   def ExtractIngredients(self):
     print("Extracting recipe ingredients...")
     for listing in self.recipe_soup.findAll('p', itemprop="ingredients"):
+      tempDict = dict()
+      #extract quantity and measurement
       amount = listing.find('span', id="lblIngAmount")
       if amount:
-        amounttext = amount.getText()
+        quantitytext = "None"
+        amounttext = removeParen(amount.getText().lower()).split()
+        #separate quantities and measurements
+        i = 0
+        for item in amounttext:
+          tempitem = st.stem(item)
+          if tempitem in QUANTITIES:
+            quantitytext = item
+            amounttext.remove(item)
+            i-= 1
+          elif item in ABR_QUANTITIES.keys():
+            quantitytext = ABR_QUANTITIES[item]
+            amounttext.remove(item)
+            i-= 1
+          #convert fractions to decimals
+          else:
+            amounttext[i] = str(float(Fraction(item)))
+          i+= 1
+        amounttext = " ".join(amounttext)
       else:
-        amounttext = ''
+        amounttext = 'None'
+      tempDict['measurement'] = quantitytext
+      tempDict['quantity'] = amounttext
+      #extract ingredient name
       ingred = listing.find('span', id="lblIngName")
       if ingred:
-        ingredtext = ingred.getText()
+        ingredtext = ingred.getText().lower()
       else:
-        amounttext = ''
-      self.ingredients.append([amounttext, ingredtext])
+        ingredtext = 'None'
+      tempDict['name'] = ingredtext
+      self.recipe_info['ingredients'].append(tempDict)
     return
 
   def ExtractTime(self):
@@ -211,7 +250,7 @@ class Recipe:
       preptimeH = listingH.getText()
       self.recipe_info['time']['preptime'] = preptimeH
     else:
-      self.recipe_info['time']['preptime'] = ""
+      self.recipe_info['time']['preptime'] = "None"
     #get the cook time minutes and hours
     print("Extracting cooking time...")
     listingM = self.recipe_soup.find('span', id="cookMinsSpan")
@@ -228,7 +267,7 @@ class Recipe:
       cooktimeH = listingH.getText()
       self.recipe_info['time']['cooktime'] = cooktimeH
     else:
-      self.recipe_info['time']['cooktime'] = ""
+      self.recipe_info['time']['cooktime'] = "None"
     #get the total time minutes and hours
     print("Extracting total time...")
     listingM = self.recipe_soup.find('span', id="totalMinsSpan")
@@ -245,7 +284,7 @@ class Recipe:
       totaltimeH = listingH.getText()
       self.recipe_info['time']['totaltime'] = totaltimeH
     else:
-      self.recipe_info['time']['totaltime'] = ""
+      self.recipe_info['time']['totaltime'] = "None"
     return
 
   def ExtractDirections(self):
@@ -290,83 +329,83 @@ class Recipe:
 
   def veganize(self):
     print("Preparing to veganize...")
-    #if already vegan, do nothing
-    if "vegan" in self.title or "Vegan" in self.title:
-      if self.verifyVegan:
-        print("*RECIPE IS ALREADY VEGAN FRIENDLY!*")
-        return
+    #if already vegan, do nothing    
+    if self.verifyVegan():
+      print("\n\n*RECIPE IS ALREADY VEGAN FRIENDLY!*")
+      return
     #else, make it vegan
     self.title = "Vegan " + self.title
     counter = 0
     print("Updating ingredients...")
-    for ingredient in self.ingredients:
+    for ingredient in self.recipe_info['ingredients']:
       #remove information in parentheses
-      ingredient[1] = removeParen(ingredient[1])
-      ingred_list = ingredient[1].split()
+      ingredient['name'] = removeParen(ingredient['name'])
+      ingred_list = ingredient['name'].split()
+      print(ingred_list)
       checker = 0
       new_weight = 0
       #change butter, cheese, etc into vegan options
       for item in NONVEGAN:
-        if item in ingredient[1]:
-          ingredient[1] = "vegan " + ingredient[1]
+        if item in ingredient['name']:
+          ingredient['name'] = "vegan " + ingredient['name']
       #change broths, stocks, etc. into vegan options
-      if ingredient[1].replace(" ", "") in VEGANCHANGE.keys():
+      if ingredient['name'].replace(" ", "") in VEGANCHANGE.keys():
         for entry in range(0,len(self.directions)):
-          self.directions[entry] = self.directions[entry].replace(ingredient[1], VEGANCHANGE[ingredient[1].replace(" ", "")])
-        ingredient[1] = VEGANCHANGE[ingredient[1].replace(" ", "")]
+          self.directions[entry] = self.directions[entry].replace(ingredient['name'], VEGANCHANGE[ingredient['name'].replace(" ", "")])
+        ingredient['name'] = VEGANCHANGE[ingredient['name'].replace(" ", "")]
       #replace meat with tofu
-      for item in ingred_list:
-        item = st.stem(item)
-        if item in MEAT:
-          if item in WEIGHT.keys():
-            new_weight = int(ingredient[0])*WEIGHT[item]
-          else:
-            new_weight = 0
-          checker+=1
-      if checker==len(ingred_list):
-        self.updateDirections(ingredient[1], ingred_list)
-        if new_weight>0:
-          ingredient[0] = str(new_weight) + " ounces"
-        ingredient[1] = "tofu"
-      checker+= 1
+      checker = True
+      for ing in ingred_list:
+        if ing in EXCEPTIONS:
+          checker = False
+      if checker:
+        for item in MEAT:
+          if item in ingred_list:
+            ingredient['name'] = 'tofu'
+            self.updateDirections(item)
+        for item in FISH:
+          if item in ingred_list:
+            ingredient['name'] = 'tofu'
+            self.updateDirections(item)
     if not self.verifyVegan():
       print("COULD NOT BE TRANSFORMED INTO VEGAN FRIENDLY RECIPE")
     return
 
-  def updateDirections(self, fullingred, ingred):
-    print("Updating recipe instructions...")
-    if fullingred[-1]=='s':
-      ingred.insert(0, fullingred[:len(fullingred)-1])
-    ingred.insert(0, fullingred)
+  def updateDirections(self, fullingred):
+    # print("Updating recipe instructions...")
+    # if fullingred[-1]=='s':
+    #   ingred.insert(0, fullingred[:len(fullingred)-1])
+    # ingred.insert(0, fullingred)
     for entry in range(0,len(self.directions)):
-      for item in ingred:
-        self.directions[entry] = self.directions[entry].replace(item, "tofu")
-        self.directions[entry] = self.directions[entry].replace("meat", "tofu")
-        self.directions[entry] = self.directions[entry].replace("them", "it")
-        self.directions[entry] = self.directions[entry].replace("tofus", "tofu")
+    #   for item in ingred:
+      self.directions[entry] = self.directions[entry].replace(fullingred, "tofu")
+      self.directions[entry] = self.directions[entry].replace("meat", "tofu")
+      self.directions[entry] = self.directions[entry].replace("them", "it")
+      self.directions[entry] = self.directions[entry].replace("tofus", "tofu")
+      self.directions[entry] = self.directions[entry].replace("tofu tofu", "tofu")
     return
 
   def verifyVegan(self):
     print("Verifying recipe...")
-    for ingred in self.ingredients:
+    for ingred in self.recipe_info['ingredients']:
       counter = 0
-      temp = ingred[1].split()
+      temp = ingred['name'].split()
       for item in temp:
-        if item in MEAT:
+        item = st.stem(item)
+        if item in MEAT or item in NONVEGAN or item in FISH:
           counter+= 1
       if counter==len(temp):
         return False
     return True
 
   def Normalize(self):
-    for entry in self.ingredients:
-      entry[0] = re.sub(r'[^\w\s]','',entry[0])
-      entry[1] = re.sub(r'[^\w\s]','',entry[1])
+    for entry in self.recipe_info['ingredients']:
+      entry['name'] = re.sub(r'[^\w\s]','',entry['name'])
     return
 
   def removeDescriptors(self):
     for entry in range(0,len(self.ingredients)):
-      self.ingredients[entry][1] = self.removeDescHelper(self.ingredients[entry][1].split())
+      self.recipe_info['ingredients']['name'] = self.removeDescHelper(self.recipe_info['ingredients']['name'].split())
     return
 
   def removeDescHelper(self, item_list):
@@ -387,8 +426,8 @@ class Recipe:
     + "#  Ingredients\n"
     + "#==========================================#\n")
 
-    for item in self.ingredients:
-        dir = dir + "-->" + item[1] + " (" + item[0] + ")\n"
+    for item in self.recipe_info['ingredients']:
+        dir = dir + "-->" + item['name'] + " (" + item['quantity'] + " " + item['measurement'] + ")\n"
 
     dir = (dir + "\n##==========================================#\n"
       + "#  Tools\n"
@@ -424,7 +463,6 @@ def Initialize():
     print('\n')
     recipe = Recipe()
     recipe.veganize()
-    print(recipe.recipe_info)
     print recipe
   if request=='e':
     print('\n')
