@@ -5,7 +5,7 @@ import json
 import nltk
 from nltk.stem.lancaster import LancasterStemmer
 st = LancasterStemmer()
-import re, string
+import re, string, sys
 import urllib2
 from BeautifulSoup import BeautifulSoup as Soup
 import BeautifulSoup
@@ -18,11 +18,11 @@ from fractions import Fraction
 #-------------------------------------------------------------------------------
 
 MEAT = ["bacon", "beef", "buffalo", "bison", "breast", "brisket", "chick", "chicken", "chickens", "chuck", "drumstick", "drumsticks", 
-        "duck", "ducks", "eg", "egg", "eggs", "filet", "filets", "gizzard", "gizzards", "goos", "goose", "geese", "gees", "grous", "ground", 
-        "ham", "hen", "hens", "lamb", "leg", "legs", "liv", "liver", "livers", 
+        "duck", "ducks", "filet", "filets", "gizzard", "gizzards", "goos", "goose", "geese", "gees", "grous", "ground", 
+        "ham", "hen", "hens", "lamb", "leg", "legs", "liv", "liver", "livers", "bel", "raw", "cut",
         "lobst", "lobster", "lobsters", "mignon", "mutton", "pheas", "pheasant", "pork", "rib", "ribs", "ribeye", "ribeyes", 
         "chop", "chops", "quail", "roast", "skinless", "steak", "steak", "strip", "strips", "thigh", "thighs", "turkey", "turkeys",
-         "fish", "scallop", "scallops", "shrimp", "tenderloin", "veal", "venison", "wing", "wings", "lean", "sausage"]
+         "fish", "scallop", "scallops", "shrimp", "tenderloin", "veal", "venison", "wing", "wings", "lean", "sausage", "halv", "half", "halves"]
 
 FISH = ["catfish", "pollock", "mackerel", "flounder", "halibut", "mahi", "tuna", "salmon", "blue gill", "shark",
         "grouper", "haddock", "bass", "trout", "crappie", "bluefish", "bluefin", "cod", "carp", "sheephead", 
@@ -33,7 +33,6 @@ EXCEPTIONS = ["season", "seasoning", "powder", "powders", "glaz", "glaze", "sauc
               "spice", "spic", "spices", "mix"]
 
 WEIGHT = dict(bacon = .66, breast = 6, chicken = 64, chop = 4, duck = 64, turkey = 160) #in ounces
-NONVEGAN = ["butter", "cheese"]
 
 VEGANCHANGE = dict(beefbouillon = "vegetable bouillon", beefbroth = "french onion soup", beefstock = "vegetable stock", 
                     chickenbouillon = "vegetable bouillon", chickenbroth = "french onion soup", chickenstock = "vegetable stock", 
@@ -341,7 +340,6 @@ class Recipe:
     self.recipe_info['tools'] = tools
     return
 
-
   def vegetarianize(self):
     print("Preparing to vegetarianize...")
     #if already vegan, do nothing    
@@ -354,11 +352,14 @@ class Recipe:
     counter = 0
     print("Updating ingredients...")
     for ingredient in self.recipe_info['ingredients']:
-      temp = alchemyapi.keywords('text', ingredient['name'], {'maxRetrieve': 1, 'sentiment':1})
+      try:
+        temp = alchemyapi.keywords('text', ingredient['name'], {'maxRetrieve': 1, 'sentiment':1})
+      except:
+        print("\n####ERROR: Alchemy limit exceeded. Change API Keys to continue.")
+        sys.exit(0)
       for keyword in temp['keywords']:
         ntemp = keyword['text']
         ntemp = ntemp.split()
-
       #change broths, stocks, etc. into vegan options
         if "".join(ntemp) in VEGANCHANGE.keys():
           for entry in range(0,len(self.directions)):
@@ -408,13 +409,17 @@ class Recipe:
     print("Verifying recipe...")
     for ingred in self.recipe_info['ingredients']:
       counter = 0
-      temp = alchemyapi.keywords('text', ingred['name'], {'maxRetrieve': 1})
+      try:
+        temp = alchemyapi.keywords('text', ingred['name'], {'maxRetrieve': 1})
+      except:
+        print("\n####ERROR: Alchemy limit exceeded. Change API Keys to continue.")
+        sys.exit(0)
       for keyword in temp['keywords']:
         ntemp = keyword['text']
         ntemp = ntemp.split()
         for item in ntemp:
           item = st.stem(item)
-          if item in MEAT or item in NONVEGAN or item in FISH:
+          if item in MEAT:
             counter+= 1
         if counter==len(ntemp):
           return False
@@ -453,7 +458,7 @@ class Recipe:
     for item in self.recipe_info['ingredients']:
         dir = dir + "-->" + item['name'] + " (" + item['quantity'] + " " + item['measurement'] + ")\n"
 
-    dir = (dir + "\n##==========================================#\n"
+    dir = (dir + "\n#==========================================#\n"
       + "#  Tools\n"
       + "#==========================================#\n")
     for item in self.recipe_info['tools']:
@@ -491,7 +496,7 @@ def Initialize():
     answer = recipe.revert()
     if answer:
       print recipe
-    pprint.pprint(recipe.recipe_info)
+    #pprint.pprint(recipe.recipe_info)
   if request=='e':
     print('\n')
     return
