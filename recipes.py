@@ -50,6 +50,19 @@ QUANTITIES = ["teaspoon", "dessertspoon", "tablespoon", "ounce", "ount", "pound"
 ABR_QUANTITIES = dict(tsp = "teaspoon", tsps = "teaspoons", tbsp = "tablespoon", tbsps = "tablespoons", lbs = "pounds", lb = "pound", 
                       floz = "fluid ounce", oz = "ounce", pt = "pint", qt = "quart", gal = "gallon")
 
+FRUITS = ["apple", "orange", "pear", "grape", "tangerine", "clementine", "banana", "peach", "blueberry", "blackberry", "cranberry",
+"guava", "eggplant", "backcurrant", "redcurrant", "gooseberry", "tomato", "lucuma", "kiwi", "kiwigruit", "grapefruit", "pumpkin", "gourd",
+"cucumber", "melon", "lemon", "lime", "grapefruit", "boysenberry", "pineapple", "fig"];
+
+VEGETABLES = ["carrot", "parsnip", "beet", "beetroot", "broccoli", "cauliflower", "artichoke", "corn", "sweet corn",
+"capers", "kale", "collard greens", "spinach", "arugula", "lettuce", "spinach", "leeks", "brussel sprouts", "brussels sprouts",
+"celery", "rhubarb", "asparagus", "sweet potatoes", "yams", "sprout", "onion", "shallot", "zucchini", "peppers", "okra", "avocado", "corn", "green beans", "peas", "snow peas"];
+
+HIGH_FAT_INGREDIENTS_REDUCE = [["shortening", "oil"],
+["sugar"],
+["salt"]];
+
+HIGH_FAT_INGREDIENTS_REPLACE = dict(butter = "low-fat margarine", )
 #-------------------------------------------------------------------------------
 # This part gets a list of kitchen tools by parsing the following wikipedia pages:
 # List of food preparation utensils
@@ -340,6 +353,77 @@ class Recipe:
     self.recipe_info['tools'] = tools
     return
 
+  # USING TECHNIQUES FROM MAYO CLINIC WEBSITE
+  # http://www.mayoclinic.org/healthy-living/nutrition-and-healthy-eating/in-depth/healthy-recipes/art-20047004
+  def makeHealthy(self):
+    print("Preparing to make healthier...")
+    for ingredient in self.recipe_info['ingredients']:
+      print ingredient.name
+      # Reduce/replace butter and replace with unsweetened applesauce
+      if "butter" in ingredient.name.lower():
+        ingredient.name = "Low-fat Margarine"
+        ingredient.quantity = ingredient.quantity * .5
+        newIngredient = dict()
+        newIngredient['name'] = "applesauce"
+        newIngredient['descriptor'] = "unsweetened"
+        newIngredient['quantity'] = ingredient.quantity
+        newIngredient['measurement'] = ingredient.measurement
+        newIngredient['preparation'] = "None"
+        self.recipe_info['ingredients'].append(newIngredient)
+      # Reduce Shortening and replace with unsweetened applesauce
+      if "shortening" in ingredient.name.lower():
+        ingredient.quantity = ingredient.quantity * .5
+        newIngredient = dict()
+        newIngredient['name'] = "applesauce"
+        newIngredient['descriptor'] = "unsweetened"
+        newIngredient['quantity'] = ingredient.quantity
+        newIngredient['measurement'] = ingredient.measurement
+        newIngredient['preparation'] = "None"
+        self.recipe_info['ingredients'].append(newIngredient)
+      # Reduce amount of oil
+      if "oil" in ingredient.name.lower():
+        ingredient.quanitity = ingredient.quantity * .7
+      # Reduce sugar and add spices to compensate
+      if "sugar" == ingredient.name.lower():
+        ingredient.quantity = ingredient.quantity * .6
+        newIngredient = dict()
+        newIngredient['name'] = "Assorted spices (cinnamon, cloves, allspice, nutmeg, vanilla extract) to replace sugar"
+        newIngredient['descriptor'] = "unsweetened"
+        newIngredient['quantity'] = "1 or 2"
+        newIngredient['measurement'] = "pinches"
+        newIngredient['preparation'] = "None"
+        self.recipe_info['ingredients'].append(newIngredient)
+      # Reduce salt use dramatically
+      if "salt" == ingredient.name.lower():
+        ingredient.quantity = ingredient.quantity * .25
+      # Use low-fat pasta
+      if "pasta" in ingredient.name.lower():
+        ingredient.name = ingredient.name + " (Low-fat pasta)"
+      # Fat free milk saves calories and lowers fat content
+      if "milk" in ingredient.name.lower():
+        ingredient.name = "Fat-free milk";
+      # Remove some cheese
+      if "cheese" in ingredient.name.lower() & "shredded" in ingredient.preparation.lower():
+        ingredient.quantity = ingredient.quantity * .75
+      if "cheese" in ingredient.name.lower():
+        ingredient.quantity = ingredient.quantity * .6
+      # Increase fruits and vegetables
+      for veg in VEGETABLES:
+        if veg in ingredient.name.lower():
+          ingredient.quantity = ingredient.quanitity * 2
+      for fruit in FRUITS:
+        if fruit in ingredient.name.lower():
+          ingredient.quantity = ingredient.quantity * 2
+      # Replace ground beef
+      if "ground beef" in ingredient.name.lower():
+        ingredient.name = "Ground turkey"
+      if "beef" in ingredient.name.lower():
+        ingredient.quantity = ingredient.quantity * .75
+    # End of foor loop
+    self.recipe_info["title"] = "Low-fat " + self.recipe_info["title"];
+    print("All possible substitutions, reductions and increases in ingredients have been made.")
+
+
   def vegetarianize(self):
     print("Preparing to vegetarianize...")
     #if already vegan, do nothing    
@@ -483,10 +567,11 @@ class Recipe:
 def Initialize():
   print("\nWhat transformation would you like to perform?")
   print(" [V] Create a vegetarian option from an existing recipe")
+  print(" [H] Create a healthier option from an existing recipe")
   print(" [E] Exit")
   request = raw_input("--->")
   request = request.lower()
-  if not request in ['v', 'e']:
+  if not request in ['v', 'e', 'h']:
     return Initialize()
   if request=='v':
     print('\n')
@@ -497,6 +582,14 @@ def Initialize():
     if answer:
       print recipe
     #pprint.pprint(recipe.recipe_info)
+  if request=='h':
+    print('\n')
+    recipe = Recipe()
+    recipe.makeHealthy
+    print recipe
+    answer = recipe.revert()
+    if answer:
+      print recipe
   if request=='e':
     print('\n')
     return
