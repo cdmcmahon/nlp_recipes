@@ -45,29 +45,29 @@ def updateMeat(newitem):
   return
 
 FISH = ["catfish", "pollock", "mackerel", "flounder", "halibut", "mahi", "tuna", "salmon", "blue gill", "shark",
-        "grouper", "haddock", "bass", "trout", "crappie", "bluefish", "bluefin", "cod", "carp", "sheephead", 
+        "grouper", "haddock", "bass", "trout", "crappie", "bluefish", "bluefin", "cod", "carp", "sheephead",
         "snapper", "mahi-mahi", "perch", "panfish", "yellowfin", "walleye", "tilapia", "smallmouth", "largemouth",
         "roughy", "pollock", "rainbow", "sole"]
 
-EXCEPTIONS = ["season", "seasoning", "powder", "powders", "glaz", "glaze", "sauce", "sauc", "sauces", 
+EXCEPTIONS = ["season", "seasoning", "powder", "powders", "glaz", "glaze", "sauce", "sauc", "sauces",
               "spice", "spic", "spices", "mix"]
 
 WEIGHT = dict(bacon = .66, breast = 6, chicken = 64, chop = 4, duck = 64, turkey = 160) #in ounces
 
-VEGANCHANGE = dict(beefbouillon = "vegetable bouillon", beefbroth = "french onion soup", beefstock = "vegetable stock", 
-                    chickenbouillon = "vegetable bouillon", chickenbroth = "french onion soup", chickenstock = "vegetable stock", 
+VEGANCHANGE = dict(beefbouillon = "vegetable bouillon", beefbroth = "french onion soup", beefstock = "vegetable stock",
+                    chickenbouillon = "vegetable bouillon", chickenbroth = "french onion soup", chickenstock = "vegetable stock",
                     hamstock = "vegetable stock", fishstock = "vegetable stock",
                     vealstock = "vegetable stock", vealbouillon = "vegetable bouillon", shrimpbouillon = "shrimp bouillon")
 
 DESCRIPTORS = ["fat-free", "thick", "half", "halves", "boneless", "skinless", ",", "strip", "flank", "cut", "thin", "long",
               "into"]
 
-QUANTITIES = ["teaspoon", "dessertspoon", "tablespoon", "ounce", "ount", "pound", "fillet", "fluid ounce", "can", "cup", "pack", "package", 
+QUANTITIES = ["teaspoon", "dessertspoon", "tablespoon", "ounce", "ount", "pound", "fillet", "fluid ounce", "can", "cup", "pack", "package",
               "pint", "pinch", "quart", "gallon", "liter", "slic", "slice", "bottle", "bottl", "clove", "clov",
-              "teaspoons", "dessertspoons", "tablespoons", "ounces", "ounts", "pounds", "fillets", "fluid ounces", "cans", "cups", "packs", 
+              "teaspoons", "dessertspoons", "tablespoons", "ounces", "ounts", "pounds", "fillets", "fluid ounces", "cans", "cups", "packs",
               "packages" "pints", "pinches", "quarts", "gallons", "liters", "slices", "bottles", "cloves"]
 
-ABR_QUANTITIES = dict(tsp = "teaspoon", tsps = "teaspoons", tbsp = "tablespoon", tbsps = "tablespoons", lbs = "pounds", lb = "pound", 
+ABR_QUANTITIES = dict(tsp = "teaspoon", tsps = "teaspoons", tbsp = "tablespoon", tbsps = "tablespoons", lbs = "pounds", lb = "pound",
                       floz = "fluid ounce", oz = "ounce", pt = "pint", qt = "quart", gal = "gallon")
 
 FRUITS = ["apple", "orange", "pear", "grape", "tangerine", "clementine", "banana", "peach", "blueberry", "blackberry", "cranberry",
@@ -612,13 +612,16 @@ def Initialize():
   print("\nWhat transformation would you like to perform?")
   print(" [V] Create a vegetarian option from an existing recipe")
   print(" [H] Create a healthier option from an existing recipe")
+  print(" [N] No transformation")
   print(" [E] Exit")
   request = raw_input("--->")
   request = request.lower()
-  if not request in ['v', 'e', 'h']:
+  if not request in ['v', 'e', 'h', 'n']:
     return Initialize()
+  else:
+    print("\n")
+
   if request=='v':
-    print('\n')
     recipe = Recipe()
     recipe.vegetarianize()
     print recipe
@@ -627,16 +630,20 @@ def Initialize():
       print recipe
     #pprint.pprint(recipe.recipe_info)
   if request=='h':
-    print('\n')
     recipe = Recipe()
     recipe.makeHealthy()
     print recipe
     answer = recipe.revert()
     if answer:
       print recipe
+  if request == 'n':
+    recipe = Recipe()
+    print recipe
+
   if request=='e':
-    print('\n')
     return
+
+  raw_input("Press any key to continue.") #so they have time to actually read the recipe
   return Initialize()
 
 
