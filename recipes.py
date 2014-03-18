@@ -379,70 +379,70 @@ class Recipe:
   def makeHealthy(self):
     print("Preparing to make healthier...")
     for ingredient in self.recipe_info['ingredients']:
-      print ingredient.name
       # Reduce/replace butter and replace with unsweetened applesauce
-      if "butter" in ingredient.name.lower():
-        ingredient.name = "Low-fat Margarine"
-        ingredient.quantity = ingredient.quantity * .5
+      if "butter" in ingredient['name'].lower():
+        ingredient['name'] = "low-fat margarine"
+        ingredient['quantity'] = str(float(ingredient['quantity']) * .5)
         newIngredient = dict()
         newIngredient['name'] = "applesauce"
         newIngredient['descriptor'] = "unsweetened"
-        newIngredient['quantity'] = ingredient.quantity
-        newIngredient['measurement'] = ingredient.measurement
+        newIngredient['quantity'] = ingredient['quantity']
+        newIngredient['measurement'] = ingredient['measurement']
         newIngredient['preparation'] = "None"
         self.recipe_info['ingredients'].append(newIngredient)
       # Reduce Shortening and replace with unsweetened applesauce
-      if "shortening" in ingredient.name.lower():
-        ingredient.quantity = ingredient.quantity * .5
+      if "shortening" in ingredient['name'].lower():
+        ingredient['quantity'] = str(float(ingredient['quantity']) * .5)
         newIngredient = dict()
         newIngredient['name'] = "applesauce"
         newIngredient['descriptor'] = "unsweetened"
-        newIngredient['quantity'] = ingredient.quantity
-        newIngredient['measurement'] = ingredient.measurement
+        newIngredient['quantity'] = ingredient['quantity']
+        newIngredient['measurement'] = ingredient['measurement']
         newIngredient['preparation'] = "None"
         self.recipe_info['ingredients'].append(newIngredient)
       # Reduce amount of oil
-      if "oil" in ingredient.name.lower():
-        ingredient.quanitity = ingredient.quantity * .7
+      if "oil" in ingredient['name'].lower():
+        ingredient['quanitity'] = str(float(ingredient['quantity']) * .7)
       # Reduce sugar and add spices to compensate
-      if "sugar" == ingredient.name.lower():
-        ingredient.quantity = ingredient.quantity * .6
+      if "sugar" == ingredient['name'].lower():
+        ingredient['quantity'] = str(float(ingredient['quantity']) * .6)
         newIngredient = dict()
-        newIngredient['name'] = "Assorted spices (cinnamon, cloves, allspice, nutmeg, vanilla extract) to replace sugar"
+        newIngredient['name'] = "assorted spices (cinnamon, cloves, allspice, nutmeg, vanilla extract) to replace sugar"
         newIngredient['descriptor'] = "unsweetened"
-        newIngredient['quantity'] = "1 or 2"
+        newIngredient['quantity'] = "2"
         newIngredient['measurement'] = "pinches"
         newIngredient['preparation'] = "None"
         self.recipe_info['ingredients'].append(newIngredient)
       # Reduce salt use dramatically
-      if "salt" == ingredient.name.lower():
-        ingredient.quantity = ingredient.quantity * .25
+      if "salt" == ingredient['name'].lower():
+        ingredient['quantity'] = str(float(ingredient['quantity']) * .25)
       # Use low-fat pasta
-      if "pasta" in ingredient.name.lower():
-        ingredient.name = ingredient.name + " (Low-fat pasta)"
+      if "pasta" in ingredient['name'].lower():
+        ingredient['name'] = ingredient['name'] + " (low-fat)"
       # Fat free milk saves calories and lowers fat content
-      if "milk" in ingredient.name.lower():
-        ingredient.name = "Fat-free milk";
+      if "milk" in ingredient['name'].lower():
+        ingredient['name'] = "fat-free milk";
       # Remove some cheese
-      if "cheese" in ingredient.name.lower() & "shredded" in ingredient.preparation.lower():
-        ingredient.quantity = ingredient.quantity * .75
-      if "cheese" in ingredient.name.lower():
-        ingredient.quantity = ingredient.quantity * .6
+      if "cheese" in ingredient['name'].lower() and "shredded" in ingredient['preparation'].lower():
+        ingredient['quantity'] = str(float(ingredient['quantity']) * .75)
+      if "cheese" in ingredient['name'].lower():
+        ingredient['quantity'] = str(float(ingredient['quantity']) * .6)
       # Increase fruits and vegetables
       for veg in VEGETABLES:
-        if veg in ingredient.name.lower():
-          ingredient.quantity = ingredient.quanitity * 2
+        if veg in ingredient['name'].lower():
+          ingredient['quantity'] = str(float(ingredient['quantity']) * 2)
       for fruit in FRUITS:
-        if fruit in ingredient.name.lower():
-          ingredient.quantity = ingredient.quantity * 2
+        if fruit in ingredient['name'].lower():
+          ingredient['quantity'] = str(float(ingredient['quantity']) * 2)
       # Replace ground beef
-      if "ground beef" in ingredient.name.lower():
-        ingredient.name = "Ground turkey"
-      if "beef" in ingredient.name.lower():
-        ingredient.quantity = ingredient.quantity * .75
+      if "ground beef" in ingredient['name'].lower():
+        ingredient['name'] = "ground turkey"
+      if "beef" in ingredient['name'].lower():
+        ingredient['quantity'] = str(float(ingredient['quantity']) * .75)
     # End of foor loop
-    self.recipe_info["title"] = "Low-fat " + self.recipe_info["title"];
+    self.title = "Low-fat " + self.title
     print("All possible substitutions, reductions and increases in ingredients have been made.")
+    return
 
 
   def vegetarianize(self):
@@ -629,7 +629,7 @@ def Initialize():
   if request=='h':
     print('\n')
     recipe = Recipe()
-    recipe.makeHealthy
+    recipe.makeHealthy()
     print recipe
     answer = recipe.revert()
     if answer:
