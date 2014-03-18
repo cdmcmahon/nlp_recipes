@@ -5,7 +5,7 @@ import json
 import nltk
 from nltk.stem.lancaster import LancasterStemmer
 st = LancasterStemmer()
-import re, string, sys
+import re, string, sys, os, codecs
 import urllib2
 from BeautifulSoup import BeautifulSoup as Soup
 import BeautifulSoup
@@ -17,12 +17,32 @@ from fractions import Fraction
 # Constants and Variables
 #-------------------------------------------------------------------------------
 
-MEAT = ["bacon", "beef", "buffalo", "bison", "breast", "brisket", "chick", "chicken", "chickens", "chuck", "drumstick", "drumsticks", 
-        "duck", "ducks", "filet", "filets", "gizzard", "gizzards", "goos", "goose", "geese", "gees", "grous", "ground", 
-        "ham", "hen", "hens", "lamb", "leg", "legs", "liv", "liver", "livers", "bel", "raw", "cut",
-        "lobst", "lobster", "lobsters", "mignon", "mutton", "pheas", "pheasant", "pork", "rib", "ribs", "ribeye", "ribeyes", 
-        "chop", "chops", "quail", "roast", "skinless", "steak", "steak", "strip", "strips", "thigh", "thighs", "turkey", "turkeys",
-         "fish", "scallop", "scallops", "shrimp", "tenderloin", "veal", "venison", "wing", "wings", "lean", "sausage", "halv", "half", "halves"]
+def loadMeat():
+  filename = "meat.txt"
+  if not os.path.exists(filename):
+    print("ERROR: Meat list could not be loaded.")
+    close = raw_input('--> ')
+    return sys.exit()
+  meat = []
+  for line in codecs.open(filename, 'r', encoding='utf-8'):
+    line = line.rstrip('\n')
+    meat.append(line)
+  return meat
+
+def updateMeat(newitem):
+  try:
+    temp = alchemyapi.keywords('text', newitem, {'maxRetrieve': 1})
+  except:
+    print("\n####ERROR: Alchemy limit exceeded. Change API Keys to continue.")
+    sys.exit(0)
+  for keyword in temp['keywords']:
+    ntemp = keyword['text']
+  newlist = ntemp.split()
+  with codecs.open("meat.txt", 'a+', encoding = 'utf-8') as File:
+    for item in newlist:
+      item = st.stem(item)
+      File.write('\n' + item)
+  return
 
 FISH = ["catfish", "pollock", "mackerel", "flounder", "halibut", "mahi", "tuna", "salmon", "blue gill", "shark",
         "grouper", "haddock", "bass", "trout", "crappie", "bluefish", "bluefin", "cod", "carp", "sheephead", 
@@ -55,7 +75,6 @@ ABR_QUANTITIES = dict(tsp = "teaspoon", tsps = "teaspoons", tbsp = "tablespoon",
 # List of food preparation utensils
 # Cookware and bakeware
 #-------------------------------------------------------------------------------
-
 
 # Utensils
 def getUtensils():
@@ -158,6 +177,8 @@ class Recipe:
     self.cooking_tools = getUtensils() + getCookware()
     self.ingredients = []
     self.directions = []
+
+    self.meat = loadMeat()
     self.RetrieveInfo()
 
   def RetrieveInfo(self, url=None):
@@ -342,18 +363,14 @@ class Recipe:
 
   def vegetarianize(self):
     print("Preparing to vegetarianize...")
-    #if already vegan, do nothing    
-    if self.verifyVegetarian():
-      print("\n\n*RECIPE IS ALREADY VEGETARIAN FRIENDLY!*")
-      return
     option = self.checkFish()
     #else, make it vegan
-    self.title = "Vegetarian " + self.title
     counter = 0
+    numchanges = 0
     print("Updating ingredients...")
     for ingredient in self.recipe_info['ingredients']:
       try:
-        temp = alchemyapi.keywords('text', ingredient['name'], {'maxRetrieve': 1, 'sentiment':1})
+        temp = alchemyapi.keywords('text', ingredient['name'], {'maxRetrieve': 1})
       except:
         print("\n####ERROR: Alchemy limit exceeded. Change API Keys to continue.")
         sys.exit(0)
@@ -373,15 +390,21 @@ class Recipe:
             checker = False
         if checker:
           for item in ntemp:
-            if item in MEAT or item in FISH:
+            nitem = st.stem(item)
+            if nitem in self.meat or nitem in FISH:
               counter+= 1
           if counter==len(ntemp):
             self.updateDirections(item, ingredient['name'].split(), option[0])
             ingredient['name'] = option[0]
             ingredient['measurement'] = option[1]
+            numchanges+= 1
+    if numchanges==0:
+      self.findNewMeat()
     if not self.verifyVegetarian():
-      print("COULD NOT BE TRANSFORMED INTO VEGAN FRIENDLY RECIPE")
+      print("COULD NOT BE TRANSFORMED INTO VEGETARIAN RECIPE")
+      self.findNewMeat()
     self.recipe_info['instructions'] = self.directions
+    self.title = "Vegetarian " + self.title
     return
   #check if vegetarian option can include fish
   def checkFish(self):
@@ -419,11 +442,32 @@ class Recipe:
         ntemp = ntemp.split()
         for item in ntemp:
           item = st.stem(item)
-          if item in MEAT:
+          if item in self.meat:
             counter+= 1
         if counter==len(ntemp):
           return False
     return True
+
+  def findNewMeat(self):
+    print('\nERROR: Meat unknown.\nWhich of the following is meat?')
+    i = 1
+    intrange = [0]
+    for ingred in self.recipe_info['ingredients']:
+      intrange.append(i)
+      print("  ["+str(i)+"] " + ingred['name'])
+      i+= 1
+    print("  [0] None")
+    answer = None
+    while not answer:
+      answer = raw_input("---> ")
+      if not int(answer) in intrange:
+        answer = None
+    if int(answer)==0:
+      return
+    updateMeat(self.recipe_info['ingredients'][int(answer)-1]['name'])
+    self.meat = loadMeat()
+    print("\nMeat database updated!")
+    return self.vegetarianize()
 
   def Normalize(self):
     for entry in self.recipe_info['ingredients']:
