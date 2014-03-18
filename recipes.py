@@ -483,10 +483,10 @@ class Recipe:
             ingredient['measurement'] = option[1]
             numchanges+= 1
     if numchanges==0:
-      self.findNewMeat()
+      return self.findNewMeat()
     if not self.verifyVegetarian():
       print("COULD NOT BE TRANSFORMED INTO VEGETARIAN RECIPE")
-      self.findNewMeat()
+      return self.findNewMeat()
     self.recipe_info['instructions'] = self.directions
     self.title = "Vegetarian " + self.title
     return
