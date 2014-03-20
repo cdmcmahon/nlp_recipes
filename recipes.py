@@ -10,7 +10,7 @@ import urllib2
 from BeautifulSoup import BeautifulSoup as Soup
 import BeautifulSoup
 from fractions import Fraction
-
+import random
 # response = urllib2.urlopen('http://allrecipes.com/Recipe/Lentils-and-Rice-with-Fried-Onions-Mujadarrah/Detail.aspx?soid=carousel_0_rotd&prop24=rotd')
 
 #-------------------------------------------------------------------------------
@@ -83,6 +83,8 @@ HIGH_FAT_INGREDIENTS_REDUCE = [["shortening", "oil"],
 ["salt"]];
 
 HIGH_FAT_INGREDIENTS_REPLACE = dict(butter = "low-fat margarine", )
+
+POWDERS = ["paprika", "pepper", "salt", "flour"]
 #-------------------------------------------------------------------------------
 # This part gets a list of kitchen tools by parsing the following wikipedia pages:
 # List of food preparation utensils
@@ -374,6 +376,31 @@ class Recipe:
     self.recipe_info['tools'] = tools
     return
 
+  def makeSpicy(self):
+    #add 1/4 teaspoon of cayenne powder
+    #if step includes any kind of powder just add it there
+    newIngredient = dict(name = 'cayenne powder', quantity = '1/4', measurement = 'teaspoon', preparation = None)
+    self.recipe_info['ingredients'].append(newIngredient)
+
+    target_powder = None
+    for dir in self.recipe_info['instructions']:
+        for powder in POWDERS:
+            if powder in dir:
+                target_powder = powder
+
+    if target_powder:
+        #print target_powder
+        for i in range(len(self.recipe_info['instructions'])):
+            if target_powder in self.recipe_info['instructions'][i]:
+                self.recipe_info['instructions'][i] = self.recipe_info['instructions'][i].replace(target_powder, target_powder + " and cayenne powder")
+        return
+    else:
+        #add it in at the end
+        new_direction = "Add cayenne powder to result."
+        self.recipe_info['instructions'].append(new_direction)
+        return
+
+
   # USING TECHNIQUES FROM MAYO CLINIC WEBSITE
   # http://www.mayoclinic.org/healthy-living/nutrition-and-healthy-eating/in-depth/healthy-recipes/art-20047004
   def makeHealthy(self):
@@ -630,11 +657,13 @@ def Initialize():
   print("\nWhat transformation would you like to perform?")
   print(" [V] Create a vegetarian option from an existing recipe")
   print(" [H] Create a healthier option from an existing recipe")
+  print(" [S] Create a spicier option from an existing recipe")
   print(" [N] No transformation")
   print(" [E] Exit")
   request = raw_input("--->")
   request = request.lower()
-  if not request in ['v', 'e', 'h', 'n']:
+  if not request in ['v', 'e', 's', 'h', 'n']:
+    print "That is not a valid option!" #making sure invalid input is obvious
     return Initialize()
   else:
     print("\n")
@@ -654,6 +683,10 @@ def Initialize():
     answer = recipe.revert()
     if answer:
       print recipe
+  if request == 's':
+    recipe = Recipe()
+    recipe.makeSpicy()
+    print recipe
   if request == 'n':
     recipe = Recipe()
     print recipe
