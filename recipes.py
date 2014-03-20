@@ -381,6 +381,7 @@ class Recipe:
     for ingredient in self.recipe_info['ingredients']:
       # Reduce/replace butter and replace with unsweetened applesauce
       if "butter" in ingredient['name'].lower():
+        oldName = ingredient['name'];
         ingredient['name'] = "low-fat margarine"
         ingredient['quantity'] = str(float(ingredient['quantity']) * .5)
         newIngredient = dict()
@@ -390,6 +391,9 @@ class Recipe:
         newIngredient['measurement'] = ingredient['measurement']
         newIngredient['preparation'] = "None"
         self.recipe_info['ingredients'].append(newIngredient)
+        # Change name in directions
+        for index, direc in enumerate(self.recipe_info['instructions']):
+          self.recipe_info['instructions'][index] = direc.replace("butter", "low-fat margarine and unsweetened applesauce")
       # Reduce Shortening and replace with unsweetened applesauce
       if "shortening" in ingredient['name'].lower():
         ingredient['quantity'] = str(float(ingredient['quantity']) * .5)
@@ -400,6 +404,9 @@ class Recipe:
         newIngredient['measurement'] = ingredient['measurement']
         newIngredient['preparation'] = "None"
         self.recipe_info['ingredients'].append(newIngredient)
+        # Change name in directions
+        for index, direc in enumerate(self.recipe_info['instructions']):
+          self.recipe_info['instructions'][index] = direc.replace("shortening", "shortening and unsweetened applesauce")
       # Reduce amount of oil
       if "oil" in ingredient['name'].lower():
         ingredient['quanitity'] = str(float(ingredient['quantity']) * .7)
@@ -413,15 +420,23 @@ class Recipe:
         newIngredient['measurement'] = "pinches"
         newIngredient['preparation'] = "None"
         self.recipe_info['ingredients'].append(newIngredient)
+        # Change name in directions
+        for index, direc in enumerate(self.recipe_info['instructions']):
+          self.recipe_info['instructions'][index] = direc.replace("sugar", "sugar and assorted spices")
       # Reduce salt use dramatically
       if "salt" == ingredient['name'].lower():
         ingredient['quantity'] = str(float(ingredient['quantity']) * .25)
       # Use low-fat pasta
       if "pasta" in ingredient['name'].lower():
         ingredient['name'] = ingredient['name'] + " (low-fat)"
+        for direc in self.recipe_info['instructions']:
+          direc.replace("pasta", "low-fat pasta")
       # Fat free milk saves calories and lowers fat content
       if "milk" in ingredient['name'].lower():
-        ingredient['name'] = "fat-free milk";
+        ingredient['name'] = "fat-free milk"
+        # Change name in directions
+        for index, direc in enumerate(self.recipe_info['instructions']):
+          self.recipe_info['instructions'][index] = direc.replace("milk", "low-fat milk")
       # Remove some cheese
       if "cheese" in ingredient['name'].lower() and "shredded" in ingredient['preparation'].lower():
         ingredient['quantity'] = str(float(ingredient['quantity']) * .75)
@@ -437,6 +452,9 @@ class Recipe:
       # Replace ground beef
       if "ground beef" in ingredient['name'].lower():
         ingredient['name'] = "ground turkey"
+        # Change name in directions
+        for index, direc in enumerate(self.recipe_info['instructions']):
+          self.recipe_info['instructions'][index] = direc.replace("ground beef", "ground turkey")
       if "beef" in ingredient['name'].lower():
         ingredient['quantity'] = str(float(ingredient['quantity']) * .75)
     # End of foor loop
