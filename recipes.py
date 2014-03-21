@@ -388,16 +388,19 @@ class Recipe:
             if powder in dir:
                 target_powder = powder
 
+    self.title = "Spicy " + self.title
     if target_powder:
         #print target_powder
         for i in range(len(self.recipe_info['instructions'])):
-            if target_powder in self.recipe_info['instructions'][i]:
-                self.recipe_info['instructions'][i] = self.recipe_info['instructions'][i].replace(target_powder, target_powder + " and cayenne powder")
+          if target_powder in self.recipe_info['instructions'][i]:
+            self.recipe_info['instructions'][i] = self.recipe_info['instructions'][i].replace(target_powder, target_powder + " and cayenne powder")
         return
     else:
         #add it in at the end
-        new_direction = "Add cayenne powder to result."
-        self.recipe_info['instructions'].append(new_direction)
+        for i in reversed(range(0,len(self.recipe_info['instructions']))):
+          if "cook" in self.recipe_info['instructions'][i]:
+            self.recipe_info['instructions'][i]+= " Add cayenne powder."
+            break
         return
 
 
@@ -519,9 +522,10 @@ class Recipe:
             checker = False
         if checker:
           for item in ntemp:
-            nitem = st.stem(item)
-            if nitem in self.meat or nitem in FISH:
-              counter+= 1
+            if item!="butter":
+              nitem = st.stem(item)
+              if nitem in self.meat or nitem in FISH:
+                counter+= 1
           if counter==len(ntemp):
             self.updateDirections(item, ingredient['name'].split(), option[0])
             ingredient['name'] = option[0]
@@ -533,19 +537,31 @@ class Recipe:
       print("COULD NOT BE TRANSFORMED INTO VEGETARIAN RECIPE")
       return self.findNewMeat()
     self.recipe_info['instructions'] = self.directions
-    self.title = "Vegetarian " + self.title
+    #self.title = "Vegetarian " + self.title
     return
   #check if vegetarian option can include fish
   def checkFish(self):
     print('\n')
-    response = raw_input("Do you eat fish? (Y or N) ")
+    print("Which option do you prefer?\n [F] Fish\n [T] Tofu\n [V] Veggie")
+    response = raw_input("--->")
     print('\n')
     response = response.lower()
-    if not response in ['y', 'n']:
+    if not response in ['f', 't', 'v']:
       return self.checkFish()
-    if response=='y':
-      return ['tilapia', 'filets']
-    return ['tofu', 'pounds']
+    if response=='f':
+      if "beef" in self.title or "pork" in self.title:
+        self.changeTitle("Salmon")
+        return ['salmon', 'filets']
+      else:
+        self.changeTitle("Tilapia")
+        return ['tilapia', 'filets']
+    elif response=='t':
+      self.changeTitle("Tofu")
+      return ['tofu', 'pounds']
+    else:
+      self.changeTitle("Vegetarian")
+      veg = random.choice(VEGETABLES)
+      return [veg, "None"]
 
   def updateDirections(self, fullingred, ingredlist, option):
     ingredlist.insert(0, fullingred)
@@ -570,11 +586,12 @@ class Recipe:
         ntemp = keyword['text']
         ntemp = ntemp.split()
         for item in ntemp:
-          item = st.stem(item)
-          if item in self.meat:
-            counter+= 1
-        if counter==len(ntemp):
-          return False
+          if not item!="butter":
+            item = st.stem(item)
+            if item in self.meat:
+              counter+= 1
+          if counter==len(ntemp):
+            return False
     return True
 
   def findNewMeat(self):
@@ -597,6 +614,16 @@ class Recipe:
     self.meat = loadMeat()
     print("\nMeat database updated!")
     return self.vegetarianize()
+
+  def changeTitle(self, newingred):
+    try:
+      temp = alchemyapi.keywords('text', self.title, {'maxRetrieve': 1})
+    except:
+      print("\n####ERROR: Alchemy limit exceeded. Change API Keys to continue.")
+      sys.exit(0)
+    for keyword in temp['keywords']:
+      self.title = self.title.replace(keyword['text'], newingred)
+    return
 
   def Normalize(self):
     for entry in self.recipe_info['ingredients']:
@@ -655,9 +682,9 @@ class Recipe:
 
 def Initialize():
   print("\nWhat transformation would you like to perform?")
-  print(" [V] Create a vegetarian option from an existing recipe")
-  print(" [H] Create a healthier option from an existing recipe")
-  print(" [S] Create a spicier option from an existing recipe")
+  print(" [V] Create a VEGETARIAN option from an existing recipe")
+  print(" [H] Create a HEALTHIER option from an existing recipe")
+  print(" [S] Create a SPICIER option from an existing recipe")
   print(" [N] No transformation")
   print(" [E] Exit")
   request = raw_input("--->")
