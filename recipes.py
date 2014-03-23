@@ -181,9 +181,9 @@ original_recipe = dict()
 #   -Parses HTML for specific information (i.e. Title, Cook Time, Ingredients, etc)
 #-------------------------------------------------------------------------------
 class Recipe:
-  def __init__(self):
+  def __init__(self, url = None):
     print("Initializing...")
-    self.pageurl = None
+    self.pageurl = url
     self.recipe_html = ""
     self.recipe_soup = ""
     self.recipe_info = dict(method= "", ingredients= [], tools= [], time = dict())
@@ -194,7 +194,7 @@ class Recipe:
     self.directions = []
 
     self.meat = loadMeat()
-    self.RetrieveInfo()
+    self.RetrieveInfo(self.pageurl)
 
   def RetrieveInfo(self, url=None):
     self.ParsePage(url)
@@ -208,7 +208,7 @@ class Recipe:
     self.Normalize()
     self.ExtractMethod(getTechniques())
     self.ExtractTools()
-    return
+    return self.recipe_info
 
   def ParsePage(self, url):
     if url:
@@ -724,12 +724,15 @@ def Initialize():
   raw_input("Press any key to continue.") #so they have time to actually read the recipe
   return Initialize()
 
+def testerFunction(url):
+    t = Recipe(url)
+    return t.recipe_info
 
 #-------------------------------------------------------------------------------
 # Calling the functions defined about
 #-------------------------------------------------------------------------------
-
-Initialize()
+if __name__ == __main__:
+    Initialize()
 
 
 
