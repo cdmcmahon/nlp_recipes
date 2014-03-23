@@ -724,14 +724,18 @@ def Initialize():
   raw_input("Press any key to continue.") #so they have time to actually read the recipe
   return Initialize()
 
-def testerFunction(url):
+def testerFunction(url, to_json = True):
     t = Recipe(url)
-    return t.recipe_info
+    info = t.recipe_info
+    if to_json:
+        return json.dumps(info)
+    else:
+        return info
 
 #-------------------------------------------------------------------------------
 # Calling the functions defined about
 #-------------------------------------------------------------------------------
-if __name__ == __main__:
+if __name__ == "__main__":
     Initialize()
 
 
